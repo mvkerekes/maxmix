@@ -67,6 +67,11 @@
   function hhmm(t) { var d = new Date(t); return pad(d.getHours()) + ":" + pad(d.getMinutes()); }
   function toLocalInput(t) { var d = new Date(t); return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()) + "T" + hhmm(t); }
   function fromLocalInput(v) { var t = new Date(v).getTime(); return isNaN(t) ? null : t; }
+  function setWhen(t) { var v = toLocalInput(t).split("T"); $("#whenDate").value = v[0]; $("#whenTime").value = v[1]; }
+  function getWhen() {
+    var d = $("#whenDate").value, h = $("#whenTime").value;
+    return d && h ? fromLocalInput(d + "T" + h) : null;
+  }
   function fmtNum(n) { return Math.round(n).toLocaleString("pt-BR"); }
   function fmtDur(ms) {
     var neg = ms < 0; ms = Math.abs(ms);
@@ -142,7 +147,7 @@
   mlInput.addEventListener("change", function () { setMl(+mlInput.value || 0); });
   mlInput.addEventListener("focus", function () { mlInput.select(); });
 
-  $("#nowBtn").addEventListener("click", function () { $("#when").value = toLocalInput(Date.now()); });
+  $("#nowBtn").addEventListener("click", function () { setWhen(Date.now()); });
 
   function setSwitch(el, on) { el.setAttribute("aria-checked", String(!!on)); }
   $("#leak").addEventListener("click", function () { leak = !leak; setSwitch(this, leak); });
@@ -157,7 +162,7 @@
   function resetForm() {
     editingId = null;
     setMl(settings.lastMl || 300);
-    $("#when").value = toLocalInput(Date.now());
+    setWhen(Date.now());
     leak = false; setSwitch($("#leak"), false);
     look = ""; setSeg($("#look"), "");
     $("#note").value = "";
@@ -173,7 +178,7 @@
     show("registrar");
     editingId = id;
     setMl(e.ml);
-    $("#when").value = toLocalInput(e.t);
+    setWhen(e.t);
     leak = !!e.leak; setSwitch($("#leak"), leak);
     look = e.look || ""; setSeg($("#look"), look);
     $("#note").value = e.note || "";
@@ -188,7 +193,7 @@
     ev.preventDefault();
     var ml = +mlInput.value;
     if (!ml || ml <= 0) { toast("Informe o volume em ml."); mlInput.focus(); return; }
-    var t = fromLocalInput($("#when").value) || Date.now();
+    var t = getWhen() || Date.now();
     if (t > Date.now() + 5 * MIN) { toast("A data/hora está no futuro. Confira."); return; }
     var data = { t: t, ml: ml, leak: leak, look: look, note: $("#note").value.trim() };
 

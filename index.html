@@ -65,10 +65,11 @@
         </fieldset>
 
         <fieldset class="block">
-          <legend class="label">Data e hora</legend>
-          <div class="row">
-            <input id="when" name="when" type="datetime-local" class="field grow">
+          <legend class="label">Hora e data</legend>
+          <div class="row when">
+            <label class="mini t">Hora<input id="whenTime" name="whenTime" type="time" class="field" required></label>
             <button type="button" class="btn ghost" id="nowBtn">Agora</button>
+            <label class="mini d">Data<input id="whenDate" name="whenDate" type="date" class="field" required></label>
           </div>
         </fieldset>
 
