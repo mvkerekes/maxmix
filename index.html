@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Diário Miccional</title>
+  <meta name="description" content="Registro rápido do volume de urina em cada sondagem, com histórico, gráficos e lembretes.">
+  <meta name="theme-color" content="#F2F5F7" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0E161A" media="(prefers-color-scheme: dark)">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Diário">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Space+Grotesk:wght@500;700&display=swap">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <a class="skip" href="#main">Pular para o conteúdo</a>
+
+  <header class="top">
+    <div class="top-inner">
+      <div>
+        <h1 class="brand">Diário Miccional</h1>
+        <p class="today" id="todaySummary" aria-live="polite">Hoje: nenhum registro</p>
+      </div>
+      <div class="next-pill" id="nextPill" hidden></div>
+    </div>
+  </header>
+
+  <main id="main" class="wrap">
+
+    <!-- ===================== REGISTRAR ===================== -->
+    <section id="view-registrar" class="view" aria-labelledby="h-registrar">
+      <h2 id="h-registrar" class="view-title">
+        <span id="formTitle">Nova sondagem</span>
+      </h2>
+
+      <div class="status-line" id="lastLine">Nenhuma sondagem registrada ainda.</div>
+
+      <form id="entryForm" class="form" novalidate>
+        <fieldset class="block">
+          <legend class="label">Volume aproximado</legend>
+          <div class="volume">
+            <button type="button" class="round" id="minus" aria-label="Diminuir 50 mililitros">−</button>
+            <label class="volume-read" for="ml">
+              <input id="ml" name="ml" type="number" inputmode="numeric" min="0" max="2000" step="10" value="300" aria-describedby="mlHint">
+              <span class="unit">ml</span>
+            </label>
+            <button type="button" class="round" id="plus" aria-label="Aumentar 50 mililitros">+</button>
+          </div>
+          <div class="presets" role="group" aria-label="Valores rápidos">
+            <button type="button" class="chip" data-ml="100">100</button>
+            <button type="button" class="chip" data-ml="200">200</button>
+            <button type="button" class="chip" data-ml="300">300</button>
+            <button type="button" class="chip" data-ml="400">400</button>
+            <button type="button" class="chip" data-ml="500">500</button>
+            <button type="button" class="chip" data-ml="600">600</button>
+          </div>
+          <p class="hint" id="mlHint"></p>
+        </fieldset>
+
+        <fieldset class="block">
+          <legend class="label">Data e hora</legend>
+          <div class="row">
+            <input id="when" name="when" type="datetime-local" class="field grow">
+            <button type="button" class="btn ghost" id="nowBtn">Agora</button>
+          </div>
+        </fieldset>
+
+        <details class="block more" id="moreBox">
+          <summary class="label"><span>Mais detalhes <span class="opt">(opcional)</span></span></summary>
+          <div class="more-body">
+            <div class="switch-row">
+              <span id="leakLbl">Houve perda (escape) desde a última sondagem?</span>
+              <button type="button" class="switch" id="leak" role="switch" aria-checked="false" aria-labelledby="leakLbl"><span></span></button>
+            </div>
+
+            <div>
+              <p class="sublabel" id="lookLbl">Aspecto da urina</p>
+              <div class="seg" role="radiogroup" aria-labelledby="lookLbl" id="look">
+                <button type="button" role="radio" aria-checked="false" data-v="clara">Clara</button>
+                <button type="button" role="radio" aria-checked="false" data-v="concentrada">Concentrada</button>
+                <button type="button" role="radio" aria-checked="false" data-v="turva">Turva</button>
+                <button type="button" role="radio" aria-checked="false" data-v="sangue">Com sangue</button>
+              </div>
+            </div>
+
+            <div>
+              <label class="sublabel" for="note">Observação</label>
+              <textarea id="note" class="field" rows="2" maxlength="300" placeholder="Ex.: cheiro forte, dor, febre, bebi mais água…"></textarea>
+            </div>
+          </div>
+        </details>
+
+        <div class="actions">
+          <button type="submit" class="btn primary big" id="saveBtn">Salvar registro</button>
+          <button type="button" class="btn ghost" id="cancelEdit" hidden>Cancelar edição</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- ===================== HISTÓRICO ===================== -->
+    <section id="view-historico" class="view" aria-labelledby="h-historico" hidden>
+      <h2 id="h-historico" class="view-title">Histórico</h2>
+      <div id="historyList" class="history"></div>
+      <button type="button" class="btn ghost wide" id="moreHistory" hidden>Mostrar dias anteriores</button>
+    </section>
+
+    <!-- ===================== GRÁFICOS ===================== -->
+    <section id="view-graficos" class="view" aria-labelledby="h-graficos" hidden>
+      <div class="view-head">
+        <h2 id="h-graficos" class="view-title">Gráficos</h2>
+        <div class="seg small" role="radiogroup" aria-label="Período" id="period">
+          <button type="button" role="radio" aria-checked="true" data-v="7">7 dias</button>
+          <button type="button" role="radio" aria-checked="false" data-v="14">14 dias</button>
+          <button type="button" role="radio" aria-checked="false" data-v="30">30 dias</button>
+        </div>
+      </div>
+
+      <div id="statsEmpty" class="empty" hidden>
+        <p>Os gráficos aparecem depois dos primeiros registros.</p>
+      </div>
+
+      <div id="statsBody">
+        <div class="kpis" id="kpis"></div>
+
+        <figure class="chart">
+          <figcaption><strong>Volume total por dia</strong><span>número acima da barra = sondagens no dia</span></figcaption>
+          <div class="chart-box" id="chartDaily"></div>
+        </figure>
+
+        <figure class="chart">
+          <figcaption><strong>Volume de cada sondagem</strong><span id="limitCaption"></span></figcaption>
+          <div class="chart-box" id="chartEach"></div>
+        </figure>
+
+        <figure class="chart">
+          <figcaption><strong>Horários das sondagens</strong><span>quantas vezes em cada hora do dia</span></figcaption>
+          <div class="chart-box" id="chartHours"></div>
+        </figure>
+
+        <div class="flags" id="flags"></div>
+      </div>
+    </section>
+
+    <!-- ===================== LEMBRETES / AJUSTES ===================== -->
+    <section id="view-lembretes" class="view" aria-labelledby="h-lembretes" hidden>
+      <h2 id="h-lembretes" class="view-title">Lembretes</h2>
+
+      <div class="card">
+        <div class="switch-row">
+          <span id="remLbl"><strong>Lembretes ligados</strong></span>
+          <button type="button" class="switch" id="remOn" role="switch" aria-checked="false" aria-labelledby="remLbl"><span></span></button>
+        </div>
+
+        <div id="remBody">
+          <p class="sublabel" id="modeLbl">Como lembrar</p>
+          <div class="seg" role="radiogroup" aria-labelledby="modeLbl" id="remMode">
+            <button type="button" role="radio" aria-checked="true" data-v="interval">A cada X horas</button>
+            <button type="button" role="radio" aria-checked="false" data-v="times">Horários fixos</button>
+          </div>
+
+          <div id="modeInterval" class="stack">
+            <label class="sublabel" for="every">Intervalo depois da última sondagem</label>
+            <div class="row">
+              <button type="button" class="round sm" id="everyMinus" aria-label="Diminuir intervalo">−</button>
+              <output id="everyOut" class="big-out" for="every">4 h</output>
+              <button type="button" class="round sm" id="everyPlus" aria-label="Aumentar intervalo">+</button>
+              <input type="hidden" id="every" value="4">
+            </div>
+            <div class="row two">
+              <label class="mini">Começa às<input type="time" id="winStart" class="field" value="07:00"></label>
+              <label class="mini">Termina às<input type="time" id="winEnd" class="field" value="23:00"></label>
+            </div>
+            <p class="hint">Fora desse horário o app não lembra (útil para a noite).</p>
+          </div>
+
+          <div id="modeTimes" class="stack" hidden>
+            <p class="sublabel">Horários do dia</p>
+            <ul class="times" id="timesList"></ul>
+            <div class="row">
+              <input type="time" id="newTime" class="field grow" value="12:00" aria-label="Novo horário">
+              <button type="button" class="btn ghost" id="addTime">Adicionar</button>
+            </div>
+          </div>
+
+          <div class="stack">
+            <p class="sublabel">Avisos</p>
+            <button type="button" class="btn ghost wide" id="notifBtn">Permitir notificações</button>
+            <button type="button" class="btn ghost wide" id="testAlarm">Testar alarme</button>
+            <button type="button" class="btn primary wide" id="icsBtn">Criar alarmes na agenda do celular</button>
+            <p class="hint">
+              Dentro do app o alarme toca com som e aviso na tela. Com o app fechado, o celular pode não deixar o app tocar.
+              Para garantir, use <strong>Criar alarmes na agenda</strong>: gera eventos diários com alarme que a agenda toca sempre.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <h2 class="view-title sub">Ajustes</h2>
+
+      <div class="card stack">
+        <label class="sublabel" for="maxMl">Volume máximo orientado pelo seu médico (ml)</label>
+        <input id="maxMl" type="number" inputmode="numeric" class="field" min="0" max="2000" step="10" placeholder="Deixe vazio se não tiver">
+        <p class="hint">Se preencher, aparece uma linha de referência no gráfico e um aviso quando passar.</p>
+
+        <div class="switch-row">
+          <span id="bigLbl">Letras maiores</span>
+          <button type="button" class="switch" id="bigText" role="switch" aria-checked="false" aria-labelledby="bigLbl"><span></span></button>
+        </div>
+      </div>
+
+      <h2 class="view-title sub">Seus dados</h2>
+      <div class="card stack">
+        <p class="hint">Os registros ficam só neste aparelho. Faça backup de vez em quando e leve o CSV nas consultas.</p>
+        <button type="button" class="btn ghost wide" id="csvBtn">Exportar planilha (CSV) para o médico</button>
+        <button type="button" class="btn ghost wide" id="backupBtn">Fazer backup</button>
+        <label class="btn ghost wide file">
+          Restaurar backup
+          <input type="file" id="restoreInput" accept="application/json,.json">
+        </label>
+        <p class="hint" id="storageNote"></p>
+      </div>
+    </section>
+  </main>
+
+  <nav class="tabs" aria-label="Seções">
+    <button type="button" class="tab" data-view="registrar" aria-current="page">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+      <span>Registrar</span>
+    </button>
+    <button type="button" class="tab" data-view="historico">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+      <span>Histórico</span>
+    </button>
+    <button type="button" class="tab" data-view="graficos">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V11M12 20V5M19 20v-6"/></svg>
+      <span>Gráficos</span>
+    </button>
+    <button type="button" class="tab" data-view="lembretes">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a6 6 0 0 0-6 6v4l-2 3h16l-2-3V9a6 6 0 0 0-6-6zM10 19a2 2 0 0 0 4 0"/></svg>
+      <span>Lembretes</span>
+    </button>
+  </nav>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden>
+    <span id="toastMsg"></span>
+    <button type="button" id="toastAction" class="toast-btn" hidden>Desfazer</button>
+  </div>
+
+  <div class="alarm" id="alarm" role="alertdialog" aria-modal="true" aria-labelledby="alarmTitle" aria-describedby="alarmText" hidden>
+    <div class="alarm-card">
+      <svg class="alarm-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a6 6 0 0 0-6 6v4l-2 3h16l-2-3V9a6 6 0 0 0-6-6zM10 19a2 2 0 0 0 4 0"/></svg>
+      <h2 id="alarmTitle">Hora da sondagem</h2>
+      <p id="alarmText">Previsto para agora.</p>
+      <div class="alarm-actions">
+        <button type="button" class="btn primary big" id="alarmGo">Registrar agora</button>
+        <button type="button" class="btn ghost" id="alarmSnooze">Adiar 15 min</button>
+        <button type="button" class="btn ghost" id="alarmDismiss">Dispensar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
