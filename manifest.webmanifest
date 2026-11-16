@@ -1,6 +1,6 @@
 {
-  "name": "Diário Miccional",
-  "short_name": "Diário",
+  "name": "MaxMix",
+  "short_name": "MaxMix",
   "description": "Registro rápido do volume de urina em cada sondagem, com histórico, gráficos e lembretes.",
   "lang": "pt-BR",
   "start_url": "./#registrar",

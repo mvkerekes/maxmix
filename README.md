@@ -1,4 +1,4 @@
-# Diário Miccional
+# MaxMix
 
 App simples para quem faz **sondagem de alívio** (cateterismo intermitente) registrar cada coleta: volume aproximado, data e hora. Tem histórico, gráficos e lembretes.
 

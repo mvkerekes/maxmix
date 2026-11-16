@@ -1,4 +1,4 @@
-/* Diário Miccional — registro de sondagens (cateterismo intermitente).
+/* MaxMix — registro de sondagens (cateterismo intermitente).
    Tudo fica no aparelho (localStorage). Sem servidor, sem conta. */
 (function () {
   "use strict";
@@ -780,14 +780,14 @@
     var now = new Date();
     var stamp = now.getUTCFullYear() + pad(now.getUTCMonth() + 1) + pad(now.getUTCDate()) + "T" + pad(now.getUTCHours()) + pad(now.getUTCMinutes()) + "00Z";
     var date = now.getFullYear() + pad(now.getMonth() + 1) + pad(now.getDate());
-    var lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Diario Miccional//PT-BR", "CALSCALE:GREGORIAN", "METHOD:PUBLISH"];
+    var lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//MaxMix//PT-BR", "CALSCALE:GREGORIAN", "METHOD:PUBLISH"];
     times.forEach(function (t, i) {
       var hm = t.replace(":", "");
       var endMin = timeToMin(t) + 10;
       var endHm = pad(Math.floor(endMin / 60) % 24) + pad(endMin % 60);
       lines.push("BEGIN:VEVENT", "UID:sondagem-" + hm + "-" + i + "-" + date + "@diario-miccional",
         "DTSTAMP:" + stamp, "DTSTART:" + date + "T" + hm + "00", "DTEND:" + date + "T" + (endMin >= 1440 ? "2359" : endHm) + "00",
-        "RRULE:FREQ=DAILY", "SUMMARY:Sondagem", "DESCRIPTION:Hora da sondagem. Depois registre o volume no Diário Miccional.",
+        "RRULE:FREQ=DAILY", "SUMMARY:Sondagem", "DESCRIPTION:Hora da sondagem. Depois registre o volume no MaxMix.",
         "TRANSP:TRANSPARENT",
         "BEGIN:VALARM", "ACTION:DISPLAY", "DESCRIPTION:Hora da sondagem", "TRIGGER:PT0M", "END:VALARM",
         "END:VEVENT");
@@ -832,12 +832,12 @@
       rows.push([pad(d.getDate()) + "/" + pad(d.getMonth() + 1) + "/" + d.getFullYear(), hhmm(e.t), e.ml, e.leak ? "sim" : "nao", LOOK[e.look] || "", e.note || ""]);
     });
     var csv = "﻿" + rows.map(function (r) { return r.map(csvCell).join(";"); }).join("\r\n");
-    deliverFile("diario-miccional-" + dayKey(Date.now()) + ".csv", "text/csv", csv, "Planilha gerada com " + entries.length + " registros.");
+    deliverFile("maxmix-" + dayKey(Date.now()) + ".csv", "text/csv", csv, "Planilha gerada com " + entries.length + " registros.");
   });
 
   $("#backupBtn").addEventListener("click", function () {
-    var data = JSON.stringify({ app: "diario-miccional", version: 1, exportedAt: new Date().toISOString(), entries: entries, settings: settings }, null, 1);
-    deliverFile("backup-diario-miccional-" + dayKey(Date.now()) + ".json", "application/json", data, "Backup gerado.");
+    var data = JSON.stringify({ app: "maxmix", version: 1, exportedAt: new Date().toISOString(), entries: entries, settings: settings }, null, 1);
+    deliverFile("backup-maxmix-" + dayKey(Date.now()) + ".json", "application/json", data, "Backup gerado.");
   });
 
   $("#restoreInput").addEventListener("change", function () {
@@ -848,7 +848,7 @@
     reader.onload = function () {
       try {
         var data = JSON.parse(reader.result);
-        if (!data || data.app !== "diario-miccional" || !Array.isArray(data.entries)) throw new Error("formato");
+        if (!data || (data.app !== "maxmix" && data.app !== "diario-miccional") || !Array.isArray(data.entries)) throw new Error("formato");
         var known = {};
         entries.forEach(function (e) { known[e.id] = true; });
         var added = 0;
@@ -861,7 +861,7 @@
         if (data.settings) { settings = merge(settings, data.settings); persistSettings(); applyBig(); }
         persistEntries(); refreshAll(); renderReminders();
         toast(added ? added + " registros restaurados." : "Nada novo: esses registros já estavam aqui.");
-      } catch (e) { toast("Esse arquivo não é um backup do Diário Miccional."); }
+      } catch (e) { toast("Esse arquivo não é um backup do MaxMix."); }
     };
     reader.readAsText(f);
   });
