@@ -127,6 +127,13 @@
       </div>
 
       <div id="statsBody">
+        <div class="hero" id="avgHero"></div>
+
+        <figure class="chart">
+          <figcaption><strong>Média por sondagem, dia a dia</strong><span id="avgCaption"></span></figcaption>
+          <div class="chart-box" id="chartAvg"></div>
+        </figure>
+
         <div class="kpis" id="kpis"></div>
 
         <figure class="chart">
@@ -205,6 +212,10 @@
       <h2 class="view-title sub">Ajustes</h2>
 
       <div class="card stack">
+        <label class="sublabel" for="targetAvg">Meta: média por sondagem abaixo de (ml)</label>
+        <input id="targetAvg" type="number" inputmode="numeric" class="field" min="0" max="2000" step="10" value="400">
+        <p class="hint">A média fica verde quando está abaixo da meta e laranja quando passa.</p>
+
         <label class="sublabel" for="maxMl">Volume máximo orientado pelo seu médico (ml)</label>
         <input id="maxMl" type="number" inputmode="numeric" class="field" min="0" max="2000" step="10" placeholder="Deixe vazio se não tiver">
         <p class="hint">Se preencher, aparece uma linha de referência no gráfico e um aviso quando passar.</p>

@@ -10,6 +10,7 @@
 
   var DEFAULT_SETTINGS = {
     maxMl: null,
+    targetAvg: 400,
     bigText: false,
     lastMl: 300,
     rem: { on: false, mode: "interval", every: 4, start: "07:00", end: "23:00", times: ["07:00", "11:00", "15:00", "19:00", "23:00"] }
@@ -223,7 +224,7 @@
     var td = todayEntries();
     var total = td.reduce(function (a, e) { return a + e.ml; }, 0);
     $("#todaySummary").textContent = td.length
-      ? "Hoje: " + td.length + (td.length === 1 ? " sondagem" : " sondagens") + " · " + fmtNum(total) + " ml"
+      ? "Hoje: " + td.length + (td.length === 1 ? " sondagem" : " sondagens") + " · média " + fmtNum(total / td.length) + " ml"
       : "Hoje: nenhum registro";
 
     var last = lastEntry();
@@ -371,8 +372,15 @@
     var over = settings.maxMl ? list.filter(function (e) { return e.ml > settings.maxMl; }).length : 0;
     var leaks = list.filter(function (e) { return e.leak; }).length;
 
+    var target = settings.targetAvg;
+    renderAvgHero(list, days, avg, target);
+    $("#chartAvg").innerHTML = chartAvg(days, target);
+    $("#avgCaption").textContent = target
+      ? "verde = abaixo da meta · laranja = acima · tracejado = meta (" + target + " ml)"
+      : "defina uma meta em Lembretes › Ajustes";
+
     var k = [
-      { v: fmtNum(avg) + " ml", l: "média por sondagem" },
+      { v: fmtNum(avg) + " ml", l: "média por sondagem", warn: target && avg >= target, ok: target && avg < target },
       { v: perDay.toFixed(1).replace(".", ","), l: "sondagens por dia" },
       { v: avgGap ? fmtDur(avgGap) : "—", l: "intervalo médio" },
       { v: fmtNum(totalPerDay) + " ml", l: "total médio por dia" },
@@ -381,7 +389,7 @@
     ];
     var kb = $("#kpis"); kb.innerHTML = "";
     k.forEach(function (x) {
-      var d = document.createElement("div"); d.className = "kpi" + (x.warn ? " warn" : "");
+      var d = document.createElement("div"); d.className = "kpi" + (x.warn ? " warn" : x.ok ? " ok" : "");
       var b = document.createElement("b"); b.textContent = x.v;
       var s = document.createElement("small"); s.textContent = x.l;
       d.append(b, s); kb.append(d);
@@ -399,6 +407,74 @@
     if (over) addFlag(fl, over + (over === 1 ? " sondagem passou" : " sondagens passaram") + " do máximo definido.");
     if (looks) addFlag(fl, looks + (looks === 1 ? " registro" : " registros") + " com urina turva ou com sangue no período. Vale comentar com seu médico.");
   }
+  function renderAvgHero(list, days, avg, target) {
+    var h = $("#avgHero");
+    h.innerHTML = "";
+    var over = target && avg >= target;
+    h.className = "hero" + (over ? " over" : "");
+    var lab = document.createElement("span"); lab.className = "hero-label";
+    lab.textContent = "Média por sondagem · últimos " + period + " dias";
+    var num = document.createElement("div"); num.className = "hero-num";
+    var b = document.createElement("b"); b.textContent = fmtNum(avg) + " ml";
+    var pill = document.createElement("span"); pill.className = "hero-pill";
+    if (!target) pill.textContent = "sem meta definida";
+    else if (over) pill.textContent = "Acima da meta em " + fmtNum(avg - target) + " ml";
+    else pill.textContent = "Dentro da meta (abaixo de " + target + " ml)";
+    num.append(b, pill);
+    h.append(lab, num);
+    var sub = document.createElement("div"); sub.className = "hero-sub";
+    var td = todayEntries();
+    if (td.length) {
+      var ta = td.reduce(function (a, e) { return a + e.ml; }, 0) / td.length;
+      sub.append(span("Hoje: " + fmtNum(ta) + " ml"));
+    }
+    if (target) {
+      var act = days.filter(function (d) { return d.n; });
+      var bad = act.filter(function (d) { return d.ml / d.n >= target; }).length;
+      var above = list.filter(function (e) { return e.ml >= target; }).length;
+      sub.append(span("Dias acima da meta: " + bad + " de " + act.length));
+      sub.append(span("Sondagens com " + target + " ml ou mais: " + above + " de " + list.length));
+    }
+    if (sub.childNodes.length) h.append(sub);
+  }
+  function span(t) { var s = document.createElement("span"); s.textContent = t; return s; }
+
+  function chartAvg(days, target) {
+    var W = 520, H = 200, L = 44, R = 54, T = 18, B = 28;
+    var pw = W - L - R, ph = H - T - B;
+    var avgs = days.map(function (d) { return d.n ? d.ml / d.n : 0; });
+    var top = niceMax(Math.max.apply(null, avgs.concat(target || 0)) * 1.1);
+    var y = function (v) { return T + ph - (v / top) * ph; };
+    var bw = pw / days.length;
+    var out = '<svg viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="Média por sondagem em cada dia">';
+    for (var i = 0; i <= 4; i++) {
+      var v = top * i / 4, yy = y(v);
+      out += '<line class="c-grid" x1="' + L + '" x2="' + (W - R) + '" y1="' + yy + '" y2="' + yy + '"/>';
+      out += '<text class="c-axis" x="' + (L - 6) + '" y="' + (yy + 4) + '" text-anchor="end">' + fmtNum(v) + "</text>";
+    }
+    var every = days.length > 14 ? 5 : days.length > 7 ? 2 : 1;
+    days.forEach(function (d, i) {
+      var a = avgs[i], cx = L + i * bw + bw / 2, w = Math.max(2, bw * 0.62);
+      if (a > 0) {
+        var cls = target ? (a >= target ? " over" : " ok") : "";
+        out += '<rect class="c-bar' + cls + '" x="' + (cx - w / 2) + '" y="' + y(a) + '" width="' + w + '" height="' + (T + ph - y(a)) + '" rx="3"><title>' +
+          esc(new Date(d.t).toLocaleDateString("pt-BR") + ": média " + fmtNum(a) + " ml (" + d.n + " sondagens)") + "</title></rect>";
+        if (bw > 26) out += '<text class="c-val" x="' + cx + '" y="' + (y(a) - 5) + '" text-anchor="middle">' + fmtNum(a) + "</text>";
+      }
+      if ((days.length - 1 - i) % every === 0) {
+        var dt = new Date(d.t);
+        out += '<text class="c-axis" x="' + cx + '" y="' + (H - 8) + '" text-anchor="middle">' + pad(dt.getDate()) + "/" + pad(dt.getMonth() + 1) + "</text>";
+      }
+    });
+    if (target) {
+      var ty = y(target);
+      out += '<line class="c-target" x1="' + L + '" x2="' + (W - R) + '" y1="' + ty + '" y2="' + ty + '"/>';
+      out += '<text class="c-target-t" x="' + (W - R + 6) + '" y="' + (ty - 2) + '">meta</text>';
+      out += '<text class="c-target-t" x="' + (W - R + 6) + '" y="' + (ty + 11) + '">' + target + "</text>";
+    }
+    return out + "</svg>";
+  }
+
   function addFlag(box, text) {
     var d = document.createElement("div"); d.className = "flag";
     var s = document.createElement("strong"); s.textContent = "Atenção: ";
@@ -555,6 +631,7 @@
       li.append(b); ul.append(li);
     });
     $("#maxMl").value = settings.maxMl || "";
+    $("#targetAvg").value = settings.targetAvg || "";
     setSwitch($("#bigText"), settings.bigText);
     updateNotifBtn();
   }
@@ -583,6 +660,10 @@
   $("#maxMl").addEventListener("change", function () {
     var v = +this.value; settings.maxMl = v > 0 ? v : null; persistSettings(); setMl(+mlInput.value);
     toast(settings.maxMl ? "Máximo salvo: " + settings.maxMl + " ml." : "Máximo removido.");
+  });
+  $("#targetAvg").addEventListener("change", function () {
+    var v = +this.value; settings.targetAvg = v > 0 ? v : null; persistSettings();
+    toast(settings.targetAvg ? "Meta salva: média abaixo de " + settings.targetAvg + " ml." : "Meta removida.");
   });
   $("#bigText").addEventListener("click", function () {
     settings.bigText = !settings.bigText; persistSettings(); applyBig(); setSwitch(this, settings.bigText);
