@@ -132,6 +132,7 @@
   function setMl(v) {
     v = Math.max(0, Math.min(2000, Math.round(v / 10) * 10 || 0));
     mlInput.value = v;
+    fitVolume();
     $all(".presets .chip").forEach(function (c) { c.setAttribute("aria-pressed", String(+c.dataset.ml === v)); });
     var hint = $("#mlHint");
     if (settings.maxMl && v > settings.maxMl) {
@@ -146,6 +147,22 @@
   $("#plus").addEventListener("click", function () { setMl((+mlInput.value || 0) + 50); });
   $all(".presets .chip").forEach(function (c) { c.addEventListener("click", function () { setMl(+c.dataset.ml); }); });
   mlInput.addEventListener("change", function () { setMl(+mlInput.value || 0); });
+  mlInput.addEventListener("input", fitVolume);
+  window.addEventListener("resize", fitVolume);
+
+  // Garante que o número inteiro caiba, qualquer que seja o zoom ou o tamanho de letra do celular:
+  // começa no tamanho do CSS e diminui até não cortar nenhum dígito.
+  function fitVolume() {
+    var el = mlInput;
+    el.style.fontSize = "";
+    if (!el.offsetParent) return; // invisível: mede depois, ao abrir o pop-up
+    var fs = parseFloat(getComputedStyle(el).fontSize);
+    var guard = 40;
+    while (el.scrollWidth > el.clientWidth + 1 && fs > 18 && guard--) {
+      fs -= 2;
+      el.style.fontSize = fs + "px";
+    }
+  }
   mlInput.addEventListener("focus", function () { mlInput.select(); });
 
   $("#nowBtn").addEventListener("click", function () { setWhen(Date.now()); });
@@ -180,6 +197,7 @@
       : "Confira o volume e a hora e toque em Salvar.";
     $("#editSheet").classList.toggle("is-new", !isEdit);
     $("#editSheet").hidden = false;
+    fitVolume();
     document.body.classList.add("modal-open");
     $("#editSheet .edit-card").scrollTop = 0;
     $("#editTitle").focus({ preventScroll: true }); // não abre o teclado sozinho
