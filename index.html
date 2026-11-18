@@ -34,75 +34,25 @@
 
   <main id="main" class="wrap">
 
-    <!-- ===================== REGISTRAR ===================== -->
-    <section id="view-registrar" class="view" aria-labelledby="h-registrar">
-      <h2 id="h-registrar" class="view-title">
-        <span id="formTitle">Nova sondagem</span>
-      </h2>
+    <!-- ===================== INÍCIO ===================== -->
+    <section id="view-registrar" class="view home" aria-labelledby="h-registrar">
+      <h2 id="h-registrar" class="view-title"><span id="homeDate">Hoje</span></h2>
 
-      <div class="status-line" id="lastLine">Nenhuma sondagem registrada ainda.</div>
+      <button type="button" class="add-big" id="addBtn" aria-label="Registrar nova sondagem">
+        <span class="add-circle" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span>
+        <span class="add-label">Nova sondagem</span>
+      </button>
 
-      <form id="entryForm" class="form" novalidate>
-        <fieldset class="block">
-          <legend class="label">Volume aproximado</legend>
-          <div class="volume">
-            <button type="button" class="round" id="minus" aria-label="Diminuir 50 mililitros">−</button>
-            <label class="volume-read" for="ml">
-              <input id="ml" name="ml" type="number" inputmode="numeric" min="0" max="2000" step="10" value="300" aria-describedby="mlHint">
-              <span class="unit">ml</span>
-            </label>
-            <button type="button" class="round" id="plus" aria-label="Aumentar 50 mililitros">+</button>
-          </div>
-          <div class="presets" role="group" aria-label="Valores rápidos">
-            <button type="button" class="chip" data-ml="100">100</button>
-            <button type="button" class="chip" data-ml="200">200</button>
-            <button type="button" class="chip" data-ml="300">300</button>
-            <button type="button" class="chip" data-ml="400">400</button>
-            <button type="button" class="chip" data-ml="500">500</button>
-            <button type="button" class="chip" data-ml="600">600</button>
-          </div>
-          <p class="hint" id="mlHint"></p>
-        </fieldset>
+      <div class="home-cards">
+        <div class="hc"><small>Última</small><b id="hcLast">—</b><span id="lastLine">Nenhuma ainda</span></div>
+        <div class="hc" id="hcNextBox"><small>Próxima</small><b id="hcNext">—</b><span id="hcNextSub">Lembretes desligados</span></div>
+        <div class="hc" id="hcTodayBox"><small>Média hoje</small><b id="hcAvg">—</b><span id="hcToday">Nenhum registro</span></div>
+      </div>
 
-        <fieldset class="block">
-          <legend class="label">Hora e data</legend>
-          <div class="row when">
-            <label class="mini t">Hora<input id="whenTime" name="whenTime" type="time" class="field" required></label>
-            <button type="button" class="btn ghost" id="nowBtn">Agora</button>
-            <label class="mini d">Data<input id="whenDate" name="whenDate" type="date" class="field" required></label>
-          </div>
-        </fieldset>
-
-        <details class="block more" id="moreBox">
-          <summary class="label"><span>Mais detalhes <span class="opt">(opcional)</span></span></summary>
-          <div class="more-body">
-            <div class="switch-row">
-              <span id="leakLbl">Houve perda (escape) desde a última sondagem?</span>
-              <button type="button" class="switch" id="leak" role="switch" aria-checked="false" aria-labelledby="leakLbl"><span></span></button>
-            </div>
-
-            <div>
-              <p class="sublabel" id="lookLbl">Aspecto da urina</p>
-              <div class="seg" role="radiogroup" aria-labelledby="lookLbl" id="look">
-                <button type="button" role="radio" aria-checked="false" data-v="clara">Clara</button>
-                <button type="button" role="radio" aria-checked="false" data-v="concentrada">Concentrada</button>
-                <button type="button" role="radio" aria-checked="false" data-v="turva">Turva</button>
-                <button type="button" role="radio" aria-checked="false" data-v="sangue">Com sangue</button>
-              </div>
-            </div>
-
-            <div>
-              <label class="sublabel" for="note">Observação</label>
-              <textarea id="note" class="field" rows="2" maxlength="300" placeholder="Ex.: cheiro forte, dor, febre, bebi mais água…"></textarea>
-            </div>
-          </div>
-        </details>
-
-        <div class="actions">
-          <button type="submit" class="btn primary big" id="saveBtn">Salvar registro</button>
-          <button type="button" class="btn ghost" id="cancelEdit" hidden>Cancelar edição</button>
-        </div>
-      </form>
+      <div class="home-list">
+        <h3 class="sub-h">Registros de hoje</h3>
+        <div id="todayList"></div>
+      </div>
     </section>
 
     <!-- ===================== HISTÓRICO ===================== -->
@@ -244,8 +194,8 @@
 
   <nav class="tabs" aria-label="Seções">
     <button type="button" class="tab" data-view="registrar" aria-current="page">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-      <span>Registrar</span>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11l8-7 8 7M6 9.5V20h12V9.5"/></svg>
+      <span>Início</span>
     </button>
     <button type="button" class="tab" data-view="historico">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
@@ -277,7 +227,69 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
         </button>
       </div>
-      <div id="editSlot"></div>
+      <div id="editSlot">
+      <form id="entryForm" class="form" novalidate>
+        <fieldset class="block">
+          <legend class="label">Volume aproximado</legend>
+          <div class="volume">
+            <button type="button" class="round" id="minus" aria-label="Diminuir 50 mililitros">−</button>
+            <label class="volume-read" for="ml">
+              <input id="ml" name="ml" type="number" inputmode="numeric" min="0" max="2000" step="10" value="300" aria-describedby="mlHint">
+              <span class="unit">ml</span>
+            </label>
+            <button type="button" class="round" id="plus" aria-label="Aumentar 50 mililitros">+</button>
+          </div>
+          <div class="presets" role="group" aria-label="Valores rápidos">
+            <button type="button" class="chip" data-ml="100">100</button>
+            <button type="button" class="chip" data-ml="200">200</button>
+            <button type="button" class="chip" data-ml="300">300</button>
+            <button type="button" class="chip" data-ml="400">400</button>
+            <button type="button" class="chip" data-ml="500">500</button>
+            <button type="button" class="chip" data-ml="600">600</button>
+          </div>
+          <p class="hint" id="mlHint"></p>
+        </fieldset>
+
+        <fieldset class="block">
+          <legend class="label">Hora e data</legend>
+          <div class="row when">
+            <label class="mini t">Hora<input id="whenTime" name="whenTime" type="time" class="field" required></label>
+            <button type="button" class="btn ghost" id="nowBtn">Agora</button>
+            <label class="mini d">Data<input id="whenDate" name="whenDate" type="date" class="field" required></label>
+          </div>
+        </fieldset>
+
+        <details class="block more" id="moreBox">
+          <summary class="label"><span>Mais detalhes <span class="opt">(opcional)</span></span></summary>
+          <div class="more-body">
+            <div class="switch-row">
+              <span id="leakLbl">Houve perda (escape) desde a última sondagem?</span>
+              <button type="button" class="switch" id="leak" role="switch" aria-checked="false" aria-labelledby="leakLbl"><span></span></button>
+            </div>
+
+            <div>
+              <p class="sublabel" id="lookLbl">Aspecto da urina</p>
+              <div class="seg" role="radiogroup" aria-labelledby="lookLbl" id="look">
+                <button type="button" role="radio" aria-checked="false" data-v="clara">Clara</button>
+                <button type="button" role="radio" aria-checked="false" data-v="concentrada">Concentrada</button>
+                <button type="button" role="radio" aria-checked="false" data-v="turva">Turva</button>
+                <button type="button" role="radio" aria-checked="false" data-v="sangue">Com sangue</button>
+              </div>
+            </div>
+
+            <div>
+              <label class="sublabel" for="note">Observação</label>
+              <textarea id="note" class="field" rows="2" maxlength="300" placeholder="Ex.: cheiro forte, dor, febre, bebi mais água…"></textarea>
+            </div>
+          </div>
+        </details>
+
+        <div class="actions">
+          <button type="submit" class="btn primary big" id="saveBtn">Salvar registro</button>
+          <button type="button" class="btn ghost" id="cancelEdit">Cancelar</button>
+        </div>
+      </form>
+      </div>
     </div>
   </div>
 

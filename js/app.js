@@ -167,31 +167,31 @@
     look = ""; setSeg($("#look"), "");
     $("#note").value = "";
     $("#moreBox").open = false;
-    $("#formTitle").textContent = "Nova sondagem";
     $("#saveBtn").textContent = "Salvar registro";
-    $("#cancelEdit").hidden = true;
-    closeEditSheet();
   }
 
-  // A edição usa o mesmo formulário, levado para dentro de um pop-up.
-  var formEl = $("#entryForm");
-  var formHome = document.createComment("form-home");
-  formEl.parentNode.insertBefore(formHome, formEl);
-  function openEditSheet(e) {
-    $("#editOrig").textContent = "Original: " + e.ml + " ml às " + hhmm(e.t) + " · " + dayLabel(e.t).toLowerCase();
-    $("#editSlot").appendChild(formEl);
+  // Inclusão e edição usam o mesmo formulário, dentro de um pop-up.
+  function openSheet(e) {
+    var isEdit = !!e;
+    $("#editTitle").textContent = isEdit ? "Editar registro" : "Nova sondagem";
+    $("#editOrig").textContent = isEdit
+      ? "Original: " + e.ml + " ml às " + hhmm(e.t) + " · " + dayLabel(e.t).toLowerCase()
+      : "Confira o volume e a hora e toque em Salvar.";
+    $("#editSheet").classList.toggle("is-new", !isEdit);
     $("#editSheet").hidden = false;
     document.body.classList.add("modal-open");
     $("#editSheet .edit-card").scrollTop = 0;
     $("#editTitle").focus({ preventScroll: true }); // não abre o teclado sozinho
   }
-  function closeEditSheet() {
-    if (formEl.parentNode !== formHome.parentNode) formHome.parentNode.insertBefore(formEl, formHome.nextSibling);
+  function closeSheet() {
     $("#editSheet").hidden = true;
     document.body.classList.remove("modal-open");
+    resetForm();
   }
-  $("#editClose").addEventListener("click", function () { resetForm(); });
-  $("#editSheet").addEventListener("click", function (ev) { if (ev.target === this) resetForm(); });
+  function openNew() { resetForm(); openSheet(null); }
+  $("#addBtn").addEventListener("click", openNew);
+  $("#editClose").addEventListener("click", closeSheet);
+  $("#editSheet").addEventListener("click", function (ev) { if (ev.target === this) closeSheet(); });
 
   function startEdit(id) {
     var e = entries.find(function (x) { return x.id === id; });
@@ -204,11 +204,9 @@
     $("#note").value = e.note || "";
     $("#moreBox").open = !!(e.leak || e.look || e.note);
     $("#saveBtn").textContent = "Salvar alterações";
-    $("#cancelEdit").textContent = "Cancelar";
-    $("#cancelEdit").hidden = false;
-    openEditSheet(e);
+    openSheet(e);
   }
-  $("#cancelEdit").addEventListener("click", function () { resetForm(); });
+  $("#cancelEdit").addEventListener("click", closeSheet);
 
   $("#entryForm").addEventListener("submit", function (ev) {
     ev.preventDefault();
@@ -235,7 +233,7 @@
       // registrar conta como "fiz a sondagem": limpa adiamento
       alarmState.snoozeUntil = 0; persistAlarm();
     }
-    resetForm();
+    closeSheet();
     refreshAll();
   });
 
@@ -269,7 +267,7 @@
   $("#saved").addEventListener("click", function (ev) { if (ev.target === this) closeSaved(); });
   document.addEventListener("keydown", function (ev) {
     if (ev.key !== "Escape") return;
-    if (!$("#saved").hidden) closeSaved(); else if (!$("#editSheet").hidden) resetForm();
+    if (!$("#saved").hidden) closeSaved(); else if (!$("#editSheet").hidden) closeSheet();
   });
 
   // ------------------------------------------------------------------ resumo do topo
@@ -286,18 +284,7 @@
       ? "Hoje: " + td.length + (td.length === 1 ? " sondagem" : " sondagens") + " · média " + fmtNum(total / td.length) + " ml"
       : "Hoje: nenhum registro";
 
-    var last = lastEntry();
-    var line = $("#lastLine");
-    if (last) {
-      line.innerHTML = "";
-      line.append("Última: ");
-      var b = document.createElement("strong");
-      b.textContent = last.ml + " ml";
-      line.append(b, " às " + hhmm(last.t) + (dayStart(last.t) === dayStart(Date.now()) ? "" : " (" + dayLabel(last.t).toLowerCase() + ")") +
-        (Date.now() - last.t < 2 * MIN ? " · agora mesmo" : " · há " + fmtDur(Date.now() - last.t)));
-    } else {
-      line.textContent = "Nenhuma sondagem registrada ainda.";
-    }
+    renderHome(td, total);
 
     var pill = $("#nextPill");
     var nx = settings.rem.on ? nextDue(Date.now()) : null;
@@ -311,6 +298,50 @@
       s.textContent = diff < 0 ? fmtDur(-diff) : hhmm(nx);
       pill.append(s);
     } else { pill.hidden = true; }
+  }
+
+  // ------------------------------------------------------------------ início
+  function renderHome(td, total) {
+    var now = Date.now();
+    var dl = new Date(now).toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" });
+    $("#homeDate").textContent = dl.charAt(0).toUpperCase() + dl.slice(1);
+
+    var last = lastEntry();
+    if (last) {
+      $("#hcLast").textContent = hhmm(last.t);
+      $("#lastLine").textContent = last.ml + " ml · " + (now - last.t < 2 * MIN ? "agora mesmo" : "há " + fmtDur(now - last.t)) +
+        (dayStart(last.t) === dayStart(now) ? "" : " (" + dayLabel(last.t).toLowerCase() + ")");
+    } else { $("#hcLast").textContent = "—"; $("#lastLine").textContent = "Nenhuma ainda"; }
+
+    var box = $("#hcNextBox");
+    var nx = settings.rem.on ? nextDue(now) : null;
+    box.classList.remove("late");
+    if (nx) {
+      var diff = nx - now;
+      $("#hcNext").textContent = hhmm(nx);
+      $("#hcNextSub").textContent = diff < 0 ? "atrasada " + fmtDur(-diff) : "em " + fmtDur(diff);
+      box.classList.toggle("late", diff < 0);
+    } else {
+      $("#hcNext").textContent = "—";
+      $("#hcNextSub").textContent = settings.rem.on ? "sem horário previsto" : "lembretes desligados";
+    }
+
+    var tb = $("#hcTodayBox"); tb.classList.remove("ok", "over");
+    if (td.length) {
+      var avg = total / td.length;
+      $("#hcAvg").textContent = fmtNum(avg) + " ml";
+      $("#hcToday").textContent = td.length + (td.length === 1 ? " sondagem" : " sondagens") + " · " + fmtNum(total) + " ml no total";
+      if (settings.targetAvg) tb.classList.add(avg < settings.targetAvg ? "ok" : "over");
+    } else { $("#hcAvg").textContent = "—"; $("#hcToday").textContent = "Nenhum registro"; }
+
+    var list = $("#todayList"); list.innerHTML = "";
+    if (!td.length) {
+      list.innerHTML = '<div class="empty"><p>Toque no <strong>+</strong> depois de cada sondagem.</p></div>';
+      return;
+    }
+    var day = document.createElement("section"); day.className = "day";
+    td.slice().reverse().forEach(function (e) { day.append(entryRow(e)); });
+    list.append(day);
   }
 
   // ------------------------------------------------------------------ histórico
@@ -809,7 +840,7 @@
   }
   $("#alarmGo").addEventListener("click", function () {
     if (alarmFor) { alarmState.acked = alarmFor; persistAlarm(); }
-    closeAlarm(); resetForm(); show("registrar"); mlInput.focus();
+    closeAlarm(); show("registrar"); openNew();
   });
   $("#alarmSnooze").addEventListener("click", function () {
     alarmState.snoozeUntil = Date.now() + 15 * MIN; persistAlarm(); closeAlarm(); toast("Vou lembrar de novo às " + hhmm(alarmState.snoozeUntil) + ".");

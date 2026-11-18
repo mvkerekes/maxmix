@@ -6,7 +6,8 @@ Funciona no navegador e pode ser **instalado na tela inicial** do celular (PWA).
 
 ## O que faz
 
-- **Registrar**: volume com botões grandes (+/− 50 ml e valores rápidos), hora já preenchida, e detalhes opcionais (perda/escape, aspecto da urina, observação). Dá pra desfazer logo depois de salvar.
+- **Início**: botão grande **+** para nova sondagem, resumo (última, próxima, média de hoje) e registros do dia.
+- **Registrar** (pop-up aberto pelo +): volume com botões grandes (+/− 50 ml e valores rápidos), hora já preenchida, e detalhes opcionais (perda/escape, aspecto da urina, observação). Dá pra desfazer logo depois de salvar.
 - **Histórico**: registros agrupados por dia, com total e quantidade. Dá pra editar e apagar.
 - **Meta de média**: destaque da média por sondagem com meta (padrão: abaixo de 400 ml, ajustável). Verde quando está dentro, laranja quando passa, com gráfico da média dia a dia.
 - **Gráficos** (7, 14 ou 30 dias): média por sondagem, sondagens por dia, intervalo médio, total por dia, maior volume, registros com perda. Mostra o volume por dia, o volume de cada sondagem (com linha do máximo indicado pelo médico, se você preencher) e os horários.
