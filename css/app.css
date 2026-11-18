@@ -380,17 +380,13 @@ body.modal-open { overflow: hidden; }
 .c-time { fill: var(--muted); font-size: 10px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .chart svg .halo { paint-order: stroke; stroke: var(--surface); stroke-width: 4px; stroke-linejoin: round; }
 
-/* volume: número em linha própria, tamanho que se ajusta à largura (zoom/tela pequena) */
-.volume-read input { font-size: clamp(2.2rem, 17vw, 3.2em); flex: 1 1 auto; width: 100%; min-width: 0; max-width: none; text-align: center; padding-left: 1.2em; }
-.unit { font-size: clamp(1rem, 5vw, 1.2em); }
-.steps { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.step {
-  min-height: var(--tap); border-radius: 12px; border: 2px solid var(--accent);
-  background: var(--surface); color: var(--accent); font-weight: 700; font-size: 1.15em;
-  font-variant-numeric: tabular-nums; display: flex; align-items: center; justify-content: center; gap: 6px;
-}
-.step span { font-size: 2em; line-height: 1; font-weight: 700; }
-.step:active { background: var(--accent-soft); }
+/* volume: − à esquerda, número no meio (diminui sozinho até caber), + à direita */
+.volume { display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 10px; }
+.volume-read { flex: 1 1 auto; width: auto; min-width: 0; }
+.volume-read { justify-content: center; overflow: hidden; }
+.volume-read input { font-size: clamp(2rem, 15vw, 3.2em); flex: 0 1 auto; width: 3.4ch; min-width: 0; max-width: 100%; text-align: center; padding: 0; }
+.unit { font-size: clamp(0.9rem, 4.5vw, 1.2em); flex-shrink: 0; }
+.volume .round span { font-size: 1em; line-height: 1; }
 /* telas baixas (zoom alto): botões de salvar não ficam presos embaixo, para sobrar espaço */
 @media (max-height: 640px) { .edit-card .actions { position: static; } }
 /* zoom alto: nada passa da borda do pop-up */
@@ -398,3 +394,4 @@ body.modal-open { overflow: hidden; }
 .edit-head .icon-btn { flex-shrink: 0; }
 .presets { grid-template-columns: repeat(auto-fit, minmax(min(100%, 4.4em), 1fr)); }
 .chip { min-width: 0; }
+.volume .round { width: clamp(44px, 14vw, var(--tap)); height: clamp(44px, 14vw, var(--tap)); }

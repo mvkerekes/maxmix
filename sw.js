@@ -1,5 +1,5 @@
 /* Service worker: deixa o app funcionando offline e abre o app ao tocar na notificação. */
-const VERSION = "dm-v12";
+const VERSION = "dm-v13";
 const SHELL = [
   "./", "index.html", "css/app.css", "js/app.js", "manifest.webmanifest",
   "icons/icon.svg", "icons/icon-180.png", "icons/icon-192.png", "icons/icon-512.png", "icons/maskable-512.png"
@@ -36,7 +36,7 @@ self.addEventListener("fetch", (e) => {
 
   // Arquivos do app: rede primeiro (pega atualizações), cache se estiver offline.
   e.respondWith(
-    fetch(req).then((r) => {
+    fetch(req, { cache: "no-cache" }).then((r) => {
       if (r.ok) { const copy = r.clone(); caches.open(VERSION).then((c) => c.put(req, copy)); }
       return r;
     }).catch(() => caches.match(req, { ignoreSearch: true }).then((hit) => hit || caches.match("index.html")))

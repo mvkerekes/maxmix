@@ -153,12 +153,13 @@
   // Garante que o número inteiro caiba, qualquer que seja o zoom ou o tamanho de letra do celular:
   // começa no tamanho do CSS e diminui até não cortar nenhum dígito.
   function fitVolume() {
-    var el = mlInput;
+    var el = mlInput, box = el.parentNode;
     el.style.fontSize = "";
+    el.style.width = (Math.max(1, String(el.value).length) + 0.4) + "ch"; // largura do número
     if (!el.offsetParent) return; // invisível: mede depois, ao abrir o pop-up
     var fs = parseFloat(getComputedStyle(el).fontSize);
     var guard = 40;
-    while (el.scrollWidth > el.clientWidth + 1 && fs > 18 && guard--) {
+    while ((el.scrollWidth > el.clientWidth + 1 || box.scrollWidth > box.clientWidth + 1) && fs > 18 && guard--) {
       fs -= 2;
       el.style.fontSize = fs + "px";
     }
