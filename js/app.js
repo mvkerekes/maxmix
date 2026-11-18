@@ -117,6 +117,7 @@
     if (view === "historico") renderHistory();
     if (view === "graficos") renderStats();
     if (view === "lembretes") renderReminders();
+    renderTop();
     try { history.replaceState(null, "", "#" + view); } catch (e) {}
     window.scrollTo(0, 0);
   }
@@ -287,7 +288,8 @@
     renderHome(td, total);
 
     var pill = $("#nextPill");
-    var nx = settings.rem.on ? nextDue(Date.now()) : null;
+    // No Início o cartão "Próxima" já mostra isso; o aviso do topo fica só nas outras abas.
+    var nx = settings.rem.on && current !== "registrar" ? nextDue(Date.now()) : null;
     if (nx) {
       var diff = nx - Date.now();
       pill.hidden = false;
