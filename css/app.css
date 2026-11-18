@@ -132,8 +132,8 @@ legend.label + * { clear: both; }
 .row.when .mini.d { flex: 1 1 100%; }
 
 /* volume */
-.volume { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.volume-read { display: flex; align-items: baseline; justify-content: center; gap: 6px; flex: 1; min-width: 0; }
+.volume { display: flex; flex-direction: column; align-items: stretch; gap: 12px; }
+.volume-read { display: flex; align-items: baseline; justify-content: center; gap: 6px; width: 100%; min-width: 0; }
 .volume-read input {
   width: 4.2ch; min-width: 0; border: 0; background: transparent; text-align: right;
   font-family: var(--f-display); font-weight: 700; font-size: 3.2em; line-height: 1; padding: 0;
@@ -379,3 +379,17 @@ body.modal-open { overflow: hidden; }
 .c-now-t { fill: var(--accent); font-size: 10px; font-weight: 700; }
 .c-time { fill: var(--muted); font-size: 10px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .chart svg .halo { paint-order: stroke; stroke: var(--surface); stroke-width: 4px; stroke-linejoin: round; }
+
+/* volume: número em linha própria, tamanho que se ajusta à largura (zoom/tela pequena) */
+.volume-read input { font-size: clamp(2.2rem, 17vw, 3.2em); width: 4.6ch; max-width: 100%; text-align: center; }
+.unit { font-size: clamp(1rem, 5vw, 1.2em); }
+.steps { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.step {
+  min-height: var(--tap); border-radius: 12px; border: 2px solid var(--accent);
+  background: var(--surface); color: var(--accent); font-weight: 700; font-size: 1.15em;
+  font-variant-numeric: tabular-nums; display: flex; align-items: center; justify-content: center; gap: 6px;
+}
+.step span { font-size: 1.35em; line-height: 1; }
+.step:active { background: var(--accent-soft); }
+/* telas baixas (zoom alto): botões de salvar não ficam presos embaixo, para sobrar espaço */
+@media (max-height: 640px) { .edit-card .actions { position: static; } }

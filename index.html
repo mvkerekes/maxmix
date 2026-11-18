@@ -237,12 +237,14 @@
         <fieldset class="block">
           <legend class="label">Volume aproximado</legend>
           <div class="volume">
-            <button type="button" class="round" id="minus" aria-label="Diminuir 50 mililitros">−</button>
             <label class="volume-read" for="ml">
               <input id="ml" name="ml" type="number" inputmode="numeric" min="0" max="2000" step="10" value="300" aria-describedby="mlHint">
               <span class="unit">ml</span>
             </label>
-            <button type="button" class="round" id="plus" aria-label="Aumentar 50 mililitros">+</button>
+            <div class="steps">
+              <button type="button" class="step" id="minus" aria-label="Diminuir 50 mililitros"><span aria-hidden="true">−</span> 50</button>
+              <button type="button" class="step" id="plus" aria-label="Aumentar 50 mililitros"><span aria-hidden="true">+</span> 50</button>
+            </div>
           </div>
           <div class="presets" role="group" aria-label="Valores rápidos">
             <button type="button" class="chip" data-ml="100">100</button>
