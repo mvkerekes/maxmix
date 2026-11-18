@@ -375,3 +375,7 @@ body.modal-open { overflow: hidden; }
 .hc.over b { color: var(--warn); }
 .sub-h { font-size: 1em; margin: 0 0 8px; }
 .home-list .day { border-radius: var(--r); }
+.c-now { stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 2 3; }
+.c-now-t { fill: var(--accent); font-size: 10px; font-weight: 700; }
+.c-time { fill: var(--muted); font-size: 10px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.chart svg .halo { paint-order: stroke; stroke: var(--surface); stroke-width: 4px; stroke-linejoin: round; }

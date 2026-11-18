@@ -336,6 +336,11 @@
       if (settings.targetAvg) tb.classList.add(avg < settings.targetAvg ? "ok" : "over");
     } else { $("#hcAvg").textContent = "—"; $("#hcToday").textContent = "Nenhum registro"; }
 
+    $("#chartToday").innerHTML = chartToday(td);
+    $("#todayChartCap").textContent = "hora e volume de cada sondagem" +
+      (settings.targetAvg ? " · linha cinza = meta " + settings.targetAvg + " ml" : "") +
+      (settings.maxMl ? " · linha laranja = máx. " + settings.maxMl + " ml" : "");
+
     var list = $("#todayList"); list.innerHTML = "";
     if (!td.length) {
       list.innerHTML = '<div class="empty"><p>Toque no <strong>+</strong> depois de cada sondagem.</p></div>';
@@ -344,6 +349,55 @@
     var day = document.createElement("section"); day.className = "day";
     td.slice().reverse().forEach(function (e) { day.append(entryRow(e)); });
     list.append(day);
+  }
+
+  // Gráfico do dia: eixo X = horas (00h–24h), barra em cada sondagem com altura = volume.
+  function chartToday(td) {
+    var W = 520, H = 250, L = 40, R = 14, T = 46, B = 28;
+    var pw = W - L - R, ph = H - T - B;
+    var now = Date.now(), from = dayStart(now), end = from + DAY;
+    var maxV = Math.max.apply(null, td.map(function (e) { return e.ml; }).concat(settings.targetAvg || 0, settings.maxMl || 0, 400));
+    var top = niceMax(maxV * 1.08);
+    var x = function (t) { return L + ((t - from) / (end - from)) * pw; };
+    var y = function (v) { return T + ph - (v / top) * ph; };
+    var out = '<svg viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="Horário e volume de cada sondagem de hoje">';
+    for (var i = 0; i <= 4; i++) {
+      var v = top * i / 4, yy = y(v);
+      out += '<line class="c-grid" x1="' + L + '" x2="' + (W - R) + '" y1="' + yy + '" y2="' + yy + '"/>';
+      out += '<text class="c-axis" x="' + (L - 6) + '" y="' + (yy + 4) + '" text-anchor="end">' + fmtNum(v) + "</text>";
+    }
+    for (var h = 0; h <= 24; h += 3) {
+      var xh = x(from + h * HOUR);
+      out += '<text class="c-axis" x="' + Math.min(Math.max(xh, L + 8), W - R - 8) + '" y="' + (H - 8) + '" text-anchor="middle">' + pad(h % 24) + "h</text>";
+    }
+    // agora
+    var xn = x(now);
+    out += '<line class="c-now" x1="' + xn + '" x2="' + xn + '" y1="' + (T - 6) + '" y2="' + (T + ph) + '"/>';
+    out += '<text class="c-now-t" x="' + Math.min(xn + 4, W - R - 24) + '" y="' + (T + ph - 4) + '">agora</text>';
+    if (settings.targetAvg) {
+      var ty = y(settings.targetAvg);
+      out += '<line class="c-target" x1="' + L + '" x2="' + (W - R) + '" y1="' + ty + '" y2="' + ty + '"/>';
+    }
+    if (settings.maxMl) {
+      var my = y(settings.maxMl);
+      out += '<line class="c-limit" x1="' + L + '" x2="' + (W - R) + '" y1="' + my + '" y2="' + my + '"/>';
+    }
+    var bw = 14;
+    td.forEach(function (e, i) {
+      var cx = x(e.t), yv = y(e.ml);
+      var cls = settings.targetAvg ? (e.ml >= settings.targetAvg ? " over" : " ok") : "";
+      if (settings.maxMl && e.ml > settings.maxMl) cls = " over";
+      out += '<rect class="c-bar' + cls + '" x="' + (cx - bw / 2) + '" y="' + yv + '" width="' + bw + '" height="' + (T + ph - yv) + '" rx="4"><title>' +
+        esc(hhmm(e.t) + " · " + e.ml + " ml") + "</title></rect>";
+      // rótulo: volume em cima; hora logo abaixo do volume quando há espaço
+      var lx = Math.min(Math.max(cx, L + 16), W - R - 16);
+      out += '<text class="c-val halo" x="' + lx + '" y="' + (yv - 6) + '" text-anchor="middle">' + e.ml + "</text>";
+      out += '<text class="c-time halo" x="' + lx + '" y="' + (yv - 20) + '" text-anchor="middle">' + hhmm(e.t) + "</text>";
+    });
+    if (!td.length) {
+      out += '<text class="c-axis" x="' + (L + pw / 2) + '" y="' + (T + ph / 2) + '" text-anchor="middle" font-size="13">Nenhuma sondagem hoje ainda</text>';
+    }
+    return out + "</svg>";
   }
 
   // ------------------------------------------------------------------ histórico
