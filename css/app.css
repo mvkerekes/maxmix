@@ -16,6 +16,8 @@
   --danger: #B3261E;
   --danger-soft: #F9DEDC;
   --focus: #0A6F80;
+  --edit-bg: #DCEEF1;
+  --edit-line: #9FCBD3;
 
   --f-display: "Space Grotesk", "Segoe UI", system-ui, sans-serif;
   --f-body: "Atkinson Hyperlegible", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
@@ -44,6 +46,8 @@
     --danger: #FF8A80;
     --danger-soft: #3D1E1C;
     --focus: #52C2D2;
+    --edit-bg: #10333A;
+    --edit-line: #24606B;
     color-scheme: dark;
   }
 }
@@ -288,7 +292,7 @@ textarea.field { resize: vertical; }
 
 /* toast */
 .toast {
-  position: fixed; left: 50%; transform: translateX(-50%); z-index: 30;
+  position: fixed; left: 50%; transform: translateX(-50%); z-index: 60;
   bottom: calc(var(--tabs-h) + env(safe-area-inset-bottom, 0px) + 12px);
   width: min(520px, calc(100% - 32px));
   background: var(--ink); color: var(--bg); border-radius: 12px; padding: 12px 14px;
@@ -321,3 +325,26 @@ textarea.field { resize: vertical; }
   @keyframes pop { from { transform: scale(.92); opacity: 0; } to { transform: scale(1); opacity: 1; } }
   @keyframes draw { to { stroke-dashoffset: 0; } }
 }
+
+/* edição em pop-up */
+body.modal-open { overflow: hidden; }
+.edit-sheet {
+  position: fixed; inset: 0; z-index: 35; background: rgba(8, 18, 22, .72);
+  display: flex; align-items: center; justify-content: center;
+  padding: max(16px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px));
+}
+.edit-card {
+  width: min(520px, 100%); max-height: 100%; overflow-y: auto; overscroll-behavior: contain;
+  background: var(--edit-bg); border: 2px solid var(--edit-line); border-radius: 22px;
+  padding: 16px; display: flex; flex-direction: column; gap: 12px;
+  box-shadow: 0 18px 48px rgba(0,0,0,.35);
+}
+.edit-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.edit-head h2 { font-family: var(--f-display); font-size: 1.35em; margin: 0; }
+.edit-head p { margin: 2px 0 0; color: var(--muted); font-size: 0.88em; }
+.edit-card .block { border-color: var(--edit-line); }
+.edit-card .actions { position: sticky; bottom: -16px; background: var(--edit-bg); padding-block: 8px 4px; margin-bottom: -4px; }
+@media (prefers-reduced-motion: no-preference) {
+  .edit-sheet:not([hidden]) .edit-card { animation: pop .2s ease-out; }
+}
+#editTitle:focus { outline: none; }

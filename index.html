@@ -266,6 +266,21 @@
     <button type="button" id="toastAction" class="toast-btn" hidden>Desfazer</button>
   </div>
 
+  <div class="edit-sheet" id="editSheet" role="dialog" aria-modal="true" aria-labelledby="editTitle" hidden>
+    <div class="edit-card">
+      <div class="edit-head">
+        <div>
+          <h2 id="editTitle" tabindex="-1">Editar registro</h2>
+          <p id="editOrig"></p>
+        </div>
+        <button type="button" class="icon-btn" id="editClose" aria-label="Fechar sem salvar">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+      <div id="editSlot"></div>
+    </div>
+  </div>
+
   <div class="alarm ok-modal" id="saved" role="alertdialog" aria-modal="true" aria-labelledby="savedTitle" aria-describedby="savedText" hidden>
     <div class="alarm-card">
       <svg class="ok-ico" viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="22"/><path d="M14 25l7 7 13-15"/></svg>

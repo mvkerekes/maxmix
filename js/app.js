@@ -170,12 +170,32 @@
     $("#formTitle").textContent = "Nova sondagem";
     $("#saveBtn").textContent = "Salvar registro";
     $("#cancelEdit").hidden = true;
+    closeEditSheet();
   }
+
+  // A edição usa o mesmo formulário, levado para dentro de um pop-up.
+  var formEl = $("#entryForm");
+  var formHome = document.createComment("form-home");
+  formEl.parentNode.insertBefore(formHome, formEl);
+  function openEditSheet(e) {
+    $("#editOrig").textContent = "Original: " + e.ml + " ml às " + hhmm(e.t) + " · " + dayLabel(e.t).toLowerCase();
+    $("#editSlot").appendChild(formEl);
+    $("#editSheet").hidden = false;
+    document.body.classList.add("modal-open");
+    $("#editSheet .edit-card").scrollTop = 0;
+    $("#editTitle").focus({ preventScroll: true }); // não abre o teclado sozinho
+  }
+  function closeEditSheet() {
+    if (formEl.parentNode !== formHome.parentNode) formHome.parentNode.insertBefore(formEl, formHome.nextSibling);
+    $("#editSheet").hidden = true;
+    document.body.classList.remove("modal-open");
+  }
+  $("#editClose").addEventListener("click", function () { resetForm(); });
+  $("#editSheet").addEventListener("click", function (ev) { if (ev.target === this) resetForm(); });
 
   function startEdit(id) {
     var e = entries.find(function (x) { return x.id === id; });
     if (!e) return;
-    show("registrar");
     editingId = id;
     setMl(e.ml);
     setWhen(e.t);
@@ -183,9 +203,10 @@
     look = e.look || ""; setSeg($("#look"), look);
     $("#note").value = e.note || "";
     $("#moreBox").open = !!(e.leak || e.look || e.note);
-    $("#formTitle").textContent = "Editar registro";
     $("#saveBtn").textContent = "Salvar alterações";
+    $("#cancelEdit").textContent = "Cancelar";
     $("#cancelEdit").hidden = false;
+    openEditSheet(e);
   }
   $("#cancelEdit").addEventListener("click", function () { resetForm(); });
 
@@ -246,7 +267,10 @@
   $("#savedOk").addEventListener("click", closeSaved);
   $("#savedUndo").addEventListener("click", function () { var f = savedUndoFn; closeSaved(); if (f) f(); });
   $("#saved").addEventListener("click", function (ev) { if (ev.target === this) closeSaved(); });
-  document.addEventListener("keydown", function (ev) { if (ev.key === "Escape") closeSaved(); });
+  document.addEventListener("keydown", function (ev) {
+    if (ev.key !== "Escape") return;
+    if (!$("#saved").hidden) closeSaved(); else if (!$("#editSheet").hidden) resetForm();
+  });
 
   // ------------------------------------------------------------------ resumo do topo
   function todayEntries() {
