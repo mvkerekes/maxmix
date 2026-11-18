@@ -201,13 +201,13 @@
       var idx = entries.findIndex(function (x) { return x.id === editingId; });
       if (idx >= 0) entries[idx] = Object.assign({ id: editingId }, data);
       persistEntries();
-      toast("Registro atualizado.");
+      showSaved(data, true, null);
     } else {
       var entry = Object.assign({ id: uid() }, data);
       entries.push(entry);
       persistEntries();
       settings.lastMl = ml; persistSettings();
-      toast("Salvo: " + ml + " ml às " + hhmm(t) + ".", "Desfazer", function () {
+      showSaved(data, false, function () {
         entries = entries.filter(function (x) { return x.id !== entry.id; });
         persistEntries(); refreshAll(); toast("Registro removido.");
       });
@@ -217,6 +217,36 @@
     resetForm();
     refreshAll();
   });
+
+  // Pop-up de confirmação: mostra o que foi salvo e, ao fechar, volta a tela ao início atualizada.
+  var savedUndoFn = null, savedTimer = null;
+  function showSaved(data, edited, undo) {
+    $("#savedTitle").textContent = edited ? "Registro atualizado!" : "Registro salvo!";
+    $("#savedMl").textContent = data.ml + " ml";
+    var td = todayEntries();
+    var total = td.reduce(function (a, e) { return a + e.ml; }, 0);
+    var when = hhmm(data.t) + (dayStart(data.t) === dayStart(Date.now()) ? " de hoje" : " de " + new Date(data.t).toLocaleDateString("pt-BR"));
+    $("#savedText").textContent = "Às " + when + "." + (td.length ? " Hoje: " + td.length + (td.length === 1 ? " sondagem" : " sondagens") + ", média " + fmtNum(total / td.length) + " ml." : "");
+    savedUndoFn = undo;
+    $("#savedUndo").hidden = !undo;
+    $("#saved").hidden = false;
+    $("#savedOk").focus();
+    try { if (navigator.vibrate) navigator.vibrate(60); } catch (e) {}
+    clearTimeout(savedTimer);
+    savedTimer = setTimeout(closeSaved, 4000);
+  }
+  function closeSaved() {
+    clearTimeout(savedTimer);
+    if ($("#saved").hidden) return;
+    $("#saved").hidden = true;
+    savedUndoFn = null;
+    refreshAll();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+  $("#savedOk").addEventListener("click", closeSaved);
+  $("#savedUndo").addEventListener("click", function () { var f = savedUndoFn; closeSaved(); if (f) f(); });
+  $("#saved").addEventListener("click", function (ev) { if (ev.target === this) closeSaved(); });
+  document.addEventListener("keydown", function (ev) { if (ev.key === "Escape") closeSaved(); });
 
   // ------------------------------------------------------------------ resumo do topo
   function todayEntries() {
@@ -240,7 +270,7 @@
       var b = document.createElement("strong");
       b.textContent = last.ml + " ml";
       line.append(b, " às " + hhmm(last.t) + (dayStart(last.t) === dayStart(Date.now()) ? "" : " (" + dayLabel(last.t).toLowerCase() + ")") +
-        " · há " + fmtDur(Date.now() - last.t));
+        (Date.now() - last.t < 2 * MIN ? " · agora mesmo" : " · há " + fmtDur(Date.now() - last.t)));
     } else {
       line.textContent = "Nenhuma sondagem registrada ainda.";
     }
