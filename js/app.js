@@ -379,7 +379,7 @@
     $("#statsBody").hidden = !hasAny;
     if (!hasAny) {
       $("#statsEmpty").innerHTML = entries.length
-        ? "<p>Nenhum registro nos últimos " + period + " dias.</p>"
+        ? (period === 1 ? "<p>Nenhum registro hoje ainda.</p>" : "<p>Nenhum registro nos últimos " + period + " dias.</p>")
         : "<p>Os gráficos aparecem depois dos primeiros registros.</p>";
       return;
     }
@@ -410,15 +410,18 @@
     var target = settings.targetAvg;
     renderAvgHero(list, days, avg, target);
     $("#chartAvg").innerHTML = chartAvg(days, target);
+    // No modo "Hoje", gráficos por dia teriam uma barra só: esconde.
+    $("#chartAvg").closest("figure").hidden = period === 1;
+    $("#chartDaily").closest("figure").hidden = period === 1;
     $("#avgCaption").textContent = target
       ? "verde = abaixo da meta · laranja = acima · tracejado = meta (" + target + " ml)"
       : "defina uma meta em Lembretes › Ajustes";
 
     var k = [
       { v: fmtNum(avg) + " ml", l: "média por sondagem", warn: target && avg >= target, ok: target && avg < target },
-      { v: perDay.toFixed(1).replace(".", ","), l: "sondagens por dia" },
+      { v: perDay.toFixed(1).replace(".", ","), l: period === 1 ? "sondagens hoje" : "sondagens por dia" },
       { v: avgGap ? fmtDur(avgGap) : "—", l: "intervalo médio" },
-      { v: fmtNum(totalPerDay) + " ml", l: "total médio por dia" },
+      { v: fmtNum(totalPerDay) + " ml", l: period === 1 ? "total hoje" : "total médio por dia" },
       { v: fmtNum(max) + " ml", l: "maior volume", warn: settings.maxMl && max > settings.maxMl },
       { v: String(leaks), l: leaks === 1 ? "registro com perda" : "registros com perda", warn: leaks > 0 }
     ];
@@ -448,7 +451,7 @@
     var over = target && avg >= target;
     h.className = "hero" + (over ? " over" : "");
     var lab = document.createElement("span"); lab.className = "hero-label";
-    lab.textContent = "Média por sondagem · últimos " + period + " dias";
+    lab.textContent = "Média por sondagem · " + (period === 1 ? "hoje" : "últimos " + period + " dias");
     var num = document.createElement("div"); num.className = "hero-num";
     var b = document.createElement("b"); b.textContent = fmtNum(avg) + " ml";
     var pill = document.createElement("span"); pill.className = "hero-pill";
@@ -459,7 +462,7 @@
     h.append(lab, num);
     var sub = document.createElement("div"); sub.className = "hero-sub";
     var td = todayEntries();
-    if (td.length) {
+    if (td.length && period > 1) {
       var ta = td.reduce(function (a, e) { return a + e.ml; }, 0) / td.length;
       sub.append(span("Hoje: " + fmtNum(ta) + " ml"));
     }
@@ -467,7 +470,7 @@
       var act = days.filter(function (d) { return d.n; });
       var bad = act.filter(function (d) { return d.ml / d.n >= target; }).length;
       var above = list.filter(function (e) { return e.ml >= target; }).length;
-      sub.append(span("Dias acima da meta: " + bad + " de " + act.length));
+      if (period > 1) sub.append(span("Dias acima da meta: " + bad + " de " + act.length));
       sub.append(span("Sondagens com " + target + " ml ou mais: " + above + " de " + list.length));
     }
     if (sub.childNodes.length) h.append(sub);
@@ -570,6 +573,15 @@
     }
     var nDays = Math.round((end - from) / DAY);
     var every = nDays > 14 ? 5 : nDays > 7 ? 2 : 1;
+    if (nDays === 1) {
+      // Hoje: eixo por hora do dia
+      for (var hh = 0; hh <= 24; hh += 3) {
+        var th = from + hh * HOUR, xx = Math.min(Math.max(x(th), L + 10), W - R - 10);
+        out += '<line class="c-grid" x1="' + x(th) + '" x2="' + x(th) + '" y1="' + T + '" y2="' + (T + ph) + '" opacity=".5"/>';
+        out += '<text class="c-axis" x="' + xx + '" y="' + (H - 8) + '" text-anchor="middle">' + pad(hh % 24) + "h</text>";
+      }
+      nDays = 0;
+    }
     for (var d = 0; d < nDays; d++) {
       if ((nDays - 1 - d) % every) continue;
       var t = from + d * DAY + DAY / 2, dt = new Date(t);
