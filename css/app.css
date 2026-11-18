@@ -395,3 +395,7 @@ body.modal-open { overflow: hidden; }
 .presets { grid-template-columns: repeat(auto-fit, minmax(min(100%, 4.4em), 1fr)); }
 .chip { min-width: 0; }
 .volume .round { width: clamp(44px, 14vw, var(--tap)); height: clamp(44px, 14vw, var(--tap)); }
+/* "ml" na linha de baixo, centralizado com o número */
+.volume-read { flex-direction: column; align-items: center; gap: 2px; }
+.volume-read input { max-width: 100%; }
+.volume-read .unit { line-height: 1; }
