@@ -17,7 +17,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Space+Grotesk:wght@500;700&display=swap">
-  <link rel="stylesheet" href="css/app.css?v=15">
+  <link rel="stylesheet" href="css/app.css?v=16">
 </head>
 <body>
   <a class="skip" href="#main">Pular para o conteúdo</a>
@@ -57,6 +57,7 @@
       <div class="home-list">
         <h3 class="sub-h">Registros de hoje</h3>
         <div id="todayList"></div>
+        <div id="homeMissed"></div>
       </div>
     </section>
 
@@ -94,7 +95,7 @@
         <div class="kpis" id="kpis"></div>
 
         <figure class="chart">
-          <figcaption><strong>Volume total por dia</strong><span>número acima da barra = sondagens no dia</span></figcaption>
+          <figcaption><strong>Volume total por dia</strong><span>número = sondagens no dia (+ esquecidas) · parte clara = volume estimado das esquecidas</span></figcaption>
           <div class="chart-box" id="chartDaily"></div>
         </figure>
 
@@ -324,6 +325,6 @@
     </div>
   </div>
 
-  <script src="js/app.js?v=15"></script>
+  <script src="js/app.js?v=16"></script>
 </body>
 </html>

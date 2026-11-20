@@ -7,6 +7,7 @@
   var KEY_ENTRIES = "dm.entries.v1";
   var KEY_SETTINGS = "dm.settings.v1";
   var KEY_ALARM = "dm.alarm.v1";
+  var KEY_MISSED = "dm.missed.v1"; // { "AAAA-MM-DD": nº aprox. de sondagens esquecidas }
 
   var DEFAULT_SETTINGS = {
     maxMl: null,
@@ -30,6 +31,15 @@
   var entries = load(KEY_ENTRIES, []);
   var settings = merge(DEFAULT_SETTINGS, load(KEY_SETTINGS, {}));
   var alarmState = load(KEY_ALARM, { acked: 0, snoozeUntil: 0 });
+  var missed = load(KEY_MISSED, {});
+  if (!missed || typeof missed !== "object" || Array.isArray(missed)) missed = {};
+  function getMissed(k) { return Math.max(0, Math.min(20, +missed[k] || 0)); }
+  function setMissed(k, n) {
+    n = Math.max(0, Math.min(20, n | 0));
+    if (n) missed[k] = n; else delete missed[k];
+    save(KEY_MISSED, missed);
+  }
+  function plural(n, um, varios) { return n + " " + (n === 1 ? um : varios); }
 
   function merge(base, over) {
     var out = JSON.parse(JSON.stringify(base));
@@ -300,9 +310,10 @@
   function renderTop() {
     var td = todayEntries();
     var total = td.reduce(function (a, e) { return a + e.ml; }, 0);
+    var tm = getMissed(dayKey(Date.now()));
     $("#todaySummary").textContent = td.length
-      ? "Hoje: " + td.length + (td.length === 1 ? " sondagem" : " sondagens") + " · média " + fmtNum(total / td.length) + " ml"
-      : "Hoje: nenhum registro";
+      ? "Hoje: " + plural(td.length, "sondagem", "sondagens") + (tm ? " (+" + tm + " esquecida" + (tm > 1 ? "s" : "") + ")" : "") + " · média " + fmtNum(total / td.length) + " ml"
+      : (tm ? "Hoje: " + plural(tm, "sondagem esquecida", "sondagens esquecidas") : "Hoje: nenhum registro");
 
     renderHome(td, total);
 
@@ -351,7 +362,9 @@
     if (td.length) {
       var avg = total / td.length;
       $("#hcAvg").textContent = fmtNum(avg) + " ml";
-      $("#hcToday").textContent = td.length + (td.length === 1 ? " sondagem" : " sondagens") + " · " + fmtNum(total) + " ml no total";
+      var hm = getMissed(dayKey(now));
+      $("#hcToday").textContent = plural(td.length, "sondagem", "sondagens") + (hm ? " + " + hm + " esquecida" + (hm > 1 ? "s" : "") : "") +
+        " · " + (hm ? "~" + fmtNum(total + hm * avg) + " ml no total (estimado)" : fmtNum(total) + " ml no total");
       if (settings.targetAvg) tb.classList.add(avg < settings.targetAvg ? "ok" : "over");
     } else { $("#hcAvg").textContent = "—"; $("#hcToday").textContent = "Nenhum registro"; }
 
@@ -363,11 +376,52 @@
     var list = $("#todayList"); list.innerHTML = "";
     if (!td.length) {
       list.innerHTML = '<div class="empty"><p>Toque no <strong>+</strong> depois de cada sondagem.</p></div>';
-      return;
+    } else {
+      var day = document.createElement("section"); day.className = "day";
+      td.slice().reverse().forEach(function (e) { day.append(entryRow(e)); });
+      list.append(day);
     }
-    var day = document.createElement("section"); day.className = "day";
-    td.slice().reverse().forEach(function (e) { day.append(entryRow(e)); });
-    list.append(day);
+    var mb = $("#homeMissed"); mb.innerHTML = ""; mb.append(missedControl(dayKey(now), "home"));
+  }
+
+  // Controle "Esqueci de registrar": nº aproximado de sondagens que não foram anotadas no dia.
+  var missedFocus = null;
+  function missedControl(k, where) {
+    var n = getMissed(k);
+    var box = document.createElement("div"); box.className = "missed" + (n ? " has" : "");
+    var txt = document.createElement("div"); txt.className = "missed-txt";
+    var t = document.createElement("strong"); t.textContent = "Esqueci de registrar";
+    var h = document.createElement("span");
+    h.textContent = n ? "Conta como sondagem nas estatísticas, sem mexer na média por sondagem." : "Quantas sondagens deste dia você não anotou? (aprox.)";
+    txt.append(t, h);
+    var st = document.createElement("div"); st.className = "missed-step";
+    var lbl = k === dayKey(Date.now()) ? "hoje" : new Date(keyToTime(k)).toLocaleDateString("pt-BR");
+    function btn(sym, d, label) {
+      var b = document.createElement("button"); b.type = "button"; b.className = "round sm";
+      b.innerHTML = '<span aria-hidden="true">' + sym + "</span>";
+      b.setAttribute("aria-label", label + " (" + lbl + ")");
+      b.dataset.mk = k + "|" + where + "|" + d;
+      b.disabled = (d < 0 && n === 0) || (d > 0 && n >= 20);
+      b.addEventListener("click", function () {
+        setMissed(k, getMissed(k) + d);
+        missedFocus = b.dataset.mk;
+        refreshAll();
+      });
+      return b;
+    }
+    var out = document.createElement("output"); out.className = "missed-n"; out.textContent = n;
+    out.setAttribute("aria-live", "polite");
+    out.setAttribute("aria-label", plural(n, "sondagem esquecida", "sondagens esquecidas"));
+    st.append(btn("−", -1, "Diminuir esquecidas"), out, btn("+", 1, "Aumentar esquecidas"));
+    box.append(txt, st);
+    return box;
+  }
+  function keyToTime(k) { var p = k.split("-"); return new Date(+p[0], +p[1] - 1, +p[2], 12).getTime(); }
+  function restoreMissedFocus() {
+    if (!missedFocus) return;
+    var el = document.querySelector('[data-mk="' + missedFocus + '"]');
+    missedFocus = null;
+    if (el && !el.disabled) el.focus({ preventScroll: true });
   }
 
   // Gráfico do dia: eixo X = horas (00h–24h), barra em cada sondagem com altura = volume.
@@ -424,7 +478,7 @@
   function renderHistory() {
     var box = $("#historyList");
     box.innerHTML = "";
-    if (!entries.length) {
+    if (!entries.length && !Object.keys(missed).length) {
       box.innerHTML = '<div class="empty"><p>Nenhum registro ainda. Use a aba <strong>Registrar</strong> depois de cada sondagem.</p></div>';
       $("#moreHistory").hidden = true;
       return;
@@ -436,18 +490,25 @@
       if (!groups[k]) { groups[k] = []; order.push(k); }
       groups[k].push(e);
     });
+    Object.keys(missed).forEach(function (k) { if (!groups[k]) { groups[k] = []; order.push(k); } });
+    order.sort().reverse();
     order.slice(0, historyDays).forEach(function (k) {
       var list = groups[k];
       var total = list.reduce(function (a, e) { return a + e.ml; }, 0);
+      var m = getMissed(k);
       var day = document.createElement("section");
       day.className = "day";
       var head = document.createElement("div");
       head.className = "day-head";
-      var h = document.createElement("h3"); h.textContent = dayLabel(list[0].t);
-      var s = document.createElement("span"); s.textContent = list.length + (list.length === 1 ? " sondagem" : " sondagens") + " · " + fmtNum(total) + " ml";
+      var h = document.createElement("h3"); h.textContent = dayLabel(keyToTime(k));
+      var s = document.createElement("span");
+      s.textContent = plural(list.length, "sondagem", "sondagens") + (m ? " + " + m + " esquecida" + (m > 1 ? "s" : "") : "") + " · " + fmtNum(total) + " ml registrados";
       head.append(h, s);
       day.append(head);
       list.forEach(function (e) { day.append(entryRow(e)); });
+      var foot = document.createElement("div"); foot.className = "day-missed";
+      foot.append(missedControl(k, "hist"));
+      day.append(foot);
       box.append(day);
     });
     $("#moreHistory").hidden = order.length <= historyDays;
@@ -516,21 +577,30 @@
 
     // dias com registro (para médias justas, só conta dias que têm dado)
     var byDay = {};
-    for (var i = 0; i < period; i++) byDay[dayKey(from + i * DAY + 2 * HOUR)] = { t: from + i * DAY, n: 0, ml: 0 };
+    for (var i = 0; i < period; i++) {
+      var dk = dayKey(from + i * DAY + 2 * HOUR);
+      byDay[dk] = { t: from + i * DAY, n: 0, ml: 0, miss: getMissed(dk) };
+    }
     list.forEach(function (e) { var d = byDay[dayKey(e.t)]; if (d) { d.n++; d.ml += e.ml; } });
     var days = Object.keys(byDay).sort().map(function (k) { return byDay[k]; });
-    var activeDays = days.filter(function (d) { return d.n > 0; });
+    var activeDays = days.filter(function (d) { return d.n > 0 || d.miss > 0; });
 
     var total = list.reduce(function (a, e) { return a + e.ml; }, 0);
+    // Média por sondagem: só registros reais (as esquecidas não têm volume, não entram).
     var avg = total / list.length;
     var max = Math.max.apply(null, list.map(function (e) { return e.ml; }));
-    var perDay = list.length / activeDays.length;
-    var totalPerDay = total / activeDays.length;
+    // Esquecidas entram na contagem e, no total do dia, com o volume médio daquele dia.
+    var missTotal = days.reduce(function (a, d) { return a + d.miss; }, 0);
+    days.forEach(function (d) { d.est = d.miss ? d.miss * (d.n ? d.ml / d.n : avg) : 0; });
+    var perDay = (list.length + missTotal) / activeDays.length;
+    var totalPerDay = days.reduce(function (a, d) { return a + d.ml + d.est; }, 0) / activeDays.length;
 
     // intervalo médio entre sondagens consecutivas, ignorando lacunas > 12h (noite/esquecimento)
+    // e dias com sondagens esquecidas (o intervalo ali pareceria maior do que foi).
     var gaps = [];
     for (var j = 1; j < list.length; j++) {
       var g = list[j].t - list[j - 1].t;
+      if (getMissed(dayKey(list[j].t)) || getMissed(dayKey(list[j - 1].t))) continue;
       if (g > 0 && g <= 12 * HOUR) gaps.push(g);
     }
     var avgGap = gaps.length ? gaps.reduce(function (a, b) { return a + b; }, 0) / gaps.length : null;
@@ -549,9 +619,9 @@
 
     var k = [
       { v: fmtNum(avg) + " ml", l: "média por sondagem", warn: target && avg >= target, ok: target && avg < target },
-      { v: perDay.toFixed(1).replace(".", ","), l: period === 1 ? "sondagens hoje" : "sondagens por dia" },
+      { v: perDay.toFixed(1).replace(".", ","), l: (period === 1 ? "sondagens hoje" : "sondagens por dia") + (missTotal ? " (com " + plural(missTotal, "esquecida", "esquecidas") + ")" : "") },
       { v: avgGap ? fmtDur(avgGap) : "—", l: "intervalo médio" },
-      { v: fmtNum(totalPerDay) + " ml", l: period === 1 ? "total hoje" : "total médio por dia" },
+      { v: (missTotal ? "~" : "") + fmtNum(totalPerDay) + " ml", l: (period === 1 ? "total hoje" : "total médio por dia") + (missTotal ? " (estimado)" : "") },
       { v: fmtNum(max) + " ml", l: "maior volume", warn: settings.maxMl && max > settings.maxMl },
       { v: String(leaks), l: leaks === 1 ? "registro com perda" : "registros com perda", warn: leaks > 0 }
     ];
@@ -603,6 +673,8 @@
       if (period > 1) sub.append(span("Dias acima da meta: " + bad + " de " + act.length));
       sub.append(span("Sondagens com " + target + " ml ou mais: " + above + " de " + list.length));
     }
+    var mt = days.reduce(function (a, d) { return a + d.miss; }, 0);
+    if (mt) sub.append(span("Esquecidas informadas: " + mt + " (não entram nesta média)"));
     if (sub.childNodes.length) h.append(sub);
   }
   function span(t) { var s = document.createElement("span"); s.textContent = t; return s; }
@@ -661,7 +733,7 @@
   function chartDaily(days) {
     var W = 520, H = 220, L = 44, R = 10, T = 22, B = 28;
     var pw = W - L - R, ph = H - T - B;
-    var top = niceMax(Math.max.apply(null, days.map(function (d) { return d.ml; })));
+    var top = niceMax(Math.max.apply(null, days.map(function (d) { return d.ml + (d.est || 0); })));
     var y = function (v) { return T + ph - (v / top) * ph; };
     var bw = pw / days.length;
     var out = '<svg viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="Volume total por dia">';
@@ -674,11 +746,16 @@
     var every = days.length > 14 ? 5 : days.length > 7 ? 2 : 1;
     days.forEach(function (d, i) {
       var x = L + i * bw, w = Math.max(2, bw * 0.62), cx = x + bw / 2;
+      var tot = d.ml + (d.est || 0);
+      if (d.est) {
+        out += '<rect class="c-bar est" x="' + (cx - w / 2) + '" y="' + y(tot) + '" width="' + w + '" height="' + (y(d.ml) - y(tot)) + '" rx="3"><title>' +
+          esc(new Date(d.t).toLocaleDateString("pt-BR") + ": ~" + fmtNum(d.est) + " ml estimados de " + d.miss + " esquecida(s)") + "</title></rect>";
+      }
       if (d.ml > 0) {
         out += '<rect class="c-bar' + (d.t === today ? " today" : "") + '" x="' + (cx - w / 2) + '" y="' + y(d.ml) + '" width="' + w + '" height="' + (T + ph - y(d.ml)) + '" rx="3"><title>' +
           esc(new Date(d.t).toLocaleDateString("pt-BR") + ": " + fmtNum(d.ml) + " ml em " + d.n + " sondagens") + "</title></rect>";
-        if (bw > 14) out += '<text class="c-val" x="' + cx + '" y="' + (y(d.ml) - 5) + '" text-anchor="middle">' + d.n + "</text>";
       }
+      if (tot > 0 && bw > 14) out += '<text class="c-val" x="' + cx + '" y="' + (y(tot) - 5) + '" text-anchor="middle">' + d.n + (d.miss ? "+" + d.miss : "") + "</text>";
       if ((days.length - 1 - i) % every === 0) {
         var dt = new Date(d.t);
         out += '<text class="c-axis" x="' + cx + '" y="' + (H - 8) + '" text-anchor="middle">' + pad(dt.getDate()) + "/" + pad(dt.getMonth() + 1) + "</text>";
@@ -999,16 +1076,21 @@
   $("#csvBtn").addEventListener("click", function () {
     if (!entries.length) { toast("Ainda não há registros para exportar."); return; }
     var rows = [["data", "hora", "volume_ml", "perda", "aspecto", "observacao"]];
-    entries.forEach(function (e) {
-      var d = new Date(e.t);
-      rows.push([pad(d.getDate()) + "/" + pad(d.getMonth() + 1) + "/" + d.getFullYear(), hhmm(e.t), e.ml, e.leak ? "sim" : "nao", LOOK[e.look] || "", e.note || ""]);
+    var items = entries.map(function (e) { return { t: e.t, e: e }; });
+    Object.keys(missed).forEach(function (k) { items.push({ t: keyToTime(k) + 11.9 * HOUR, m: getMissed(k) }); });
+    items.sort(function (a, b) { return a.t - b.t; });
+    items.forEach(function (it) {
+      var d = new Date(it.t), ds = pad(d.getDate()) + "/" + pad(d.getMonth() + 1) + "/" + d.getFullYear();
+      if (it.m) { rows.push([ds, "", "", "", "", plural(it.m, "sondagem não registrada", "sondagens não registradas") + " (informado no app)"]); return; }
+      var e = it.e;
+      rows.push([ds, hhmm(e.t), e.ml, e.leak ? "sim" : "nao", LOOK[e.look] || "", e.note || ""]);
     });
     var csv = "﻿" + rows.map(function (r) { return r.map(csvCell).join(";"); }).join("\r\n");
     deliverFile("maxmix-" + dayKey(Date.now()) + ".csv", "text/csv", csv, "Planilha gerada com " + entries.length + " registros.");
   });
 
   $("#backupBtn").addEventListener("click", function () {
-    var data = JSON.stringify({ app: "maxmix", version: 1, exportedAt: new Date().toISOString(), entries: entries, settings: settings }, null, 1);
+    var data = JSON.stringify({ app: "maxmix", version: 1, exportedAt: new Date().toISOString(), entries: entries, settings: settings, missed: missed }, null, 1);
     deliverFile("backup-maxmix-" + dayKey(Date.now()) + ".json", "application/json", data, "Backup gerado.");
   });
 
@@ -1031,6 +1113,11 @@
           }
         });
         if (data.settings) { settings = merge(settings, data.settings); persistSettings(); applyBig(); }
+        if (data.missed && typeof data.missed === "object") {
+          Object.keys(data.missed).forEach(function (k) {
+            if (/^\d{4}-\d{2}-\d{2}$/.test(k)) setMissed(k, Math.max(getMissed(k), +data.missed[k] || 0));
+          });
+        }
         persistEntries(); refreshAll(); renderReminders();
         toast(added ? added + " registros restaurados." : "Nada novo: esses registros já estavam aqui.");
       } catch (e) { toast("Esse arquivo não é um backup do MaxMix."); }
@@ -1043,6 +1130,7 @@
     renderTop();
     if (current === "historico") renderHistory();
     if (current === "graficos") renderStats();
+    restoreMissedFocus();
   }
 
   sortEntries();

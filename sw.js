@@ -1,5 +1,5 @@
 /* Service worker: deixa o app funcionando offline e abre o app ao tocar na notificação. */
-const VERSION = "dm-v15";
+const VERSION = "dm-v16";
 const SHELL = [
   "./", "index.html", "css/app.css", "js/app.js", "manifest.webmanifest",
   "icons/icon.svg", "icons/icon-180.png", "icons/icon-192.png", "icons/icon-512.png", "icons/maskable-512.png"
