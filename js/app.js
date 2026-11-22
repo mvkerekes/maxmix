@@ -654,7 +654,6 @@
     $("#chartEach").innerHTML = chartEach(list, from, now);
     $("#chartHours").innerHTML = chartHours(list);
     // Mapas de calor: só fazem sentido com vários dias
-    $("#heatFreqBox").hidden = period === 1;
     $("#heatVolBox").hidden = period === 1;
     if (period > 1) renderHeat(list, days);
     $("#limitCaption").textContent = settings.maxMl
@@ -809,17 +808,12 @@
   }
   function renderHeat(list, days) {
     var g = heatGrid(list, days), target = settings.targetAvg;
-    $("#heatFreq").innerHTML = heatSvg(g, "freq", target);
     $("#heatVol").innerHTML = heatSvg(g, "vol", target);
     $("#heatVolCap").textContent = target
       ? "azul = abaixo da meta de " + target + " ml · laranja = acima · quanto mais forte, mais longe da meta"
       : "defina uma meta em Lembretes › Ajustes para colorir por meta";
     // leituras automáticas (só com dados de verdade; horas com pelo menos 2 sondagens)
     var hrs = g.all.map(function (c, h) { return { h: h, n: c.n, avg: c.n ? c.ml / c.n : 0 }; }).filter(function (x) { return x.n >= 2; });
-    var top = hrs.slice().sort(function (a, b) { return b.n - a.n; }).slice(0, 3).sort(function (a, b) { return a.h - b.h; });
-    $("#heatFreqNote").textContent = top.length
-      ? "Horários em que você mais faz: " + top.map(function (x) { return pad(x.h) + "h (" + x.n + "×)"; }).join(", ") + "."
-      : "Ainda há poucos registros para ver um padrão.";
     var hot = target ? hrs.filter(function (x) { return x.avg >= target; }).sort(function (a, b) { return b.avg - a.avg; }).slice(0, 4) : [];
     var vn = $("#heatVolNote");
     vn.classList.toggle("warn", hot.length > 0);
