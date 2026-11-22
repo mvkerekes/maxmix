@@ -418,3 +418,8 @@ body.modal-open { overflow: hidden; }
 .day-missed .missed.has { background: transparent; }
 .day-missed .missed.has strong { color: var(--warn); }
 .c-bar.est { fill: var(--accent); opacity: .35; }
+
+/* lembretes: seções automático / fixos */
+.rem-sec { display: flex; flex-direction: column; gap: 12px; padding: 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--bg); }
+.rem-sec .switch-row small { font-weight: 400; font-size: 0.82em; }
+.row.two { align-items: flex-end; }

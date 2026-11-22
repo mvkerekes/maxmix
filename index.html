@@ -17,7 +17,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Space+Grotesk:wght@500;700&display=swap">
-  <link rel="stylesheet" href="css/app.css?v=16">
+  <link rel="stylesheet" href="css/app.css?v=17">
 </head>
 <body>
   <a class="skip" href="#main">Pular para o conteúdo</a>
@@ -124,44 +124,52 @@
         </div>
 
         <div id="remBody">
-          <p class="sublabel" id="modeLbl">Como lembrar</p>
-          <div class="seg" role="radiogroup" aria-labelledby="modeLbl" id="remMode">
-            <button type="button" role="radio" aria-checked="true" data-v="interval">A cada X horas</button>
-            <button type="button" role="radio" aria-checked="false" data-v="times">Horários fixos</button>
-          </div>
+          <section class="rem-sec" aria-labelledby="autoLbl">
+            <div class="switch-row">
+              <span id="autoLbl"><strong>Automático, pela última sondagem</strong><br><small class="hint">O próximo lembrete é marcado sozinho a partir da hora em que você registrou a última.</small></span>
+              <button type="button" class="switch" id="remAuto" role="switch" aria-checked="true" aria-labelledby="autoLbl"><span></span></button>
+            </div>
+            <div id="autoBody" class="stack">
+              <p class="sublabel" id="everyLbl">Lembrar quanto tempo depois da última</p>
+              <div class="row">
+                <button type="button" class="round sm" id="everyMinus" aria-label="Diminuir intervalo">−</button>
+                <output id="everyOut" class="big-out" aria-labelledby="everyLbl">4 h</output>
+                <button type="button" class="round sm" id="everyPlus" aria-label="Aumentar intervalo">+</button>
+              </div>
+              <div class="row two">
+                <label class="mini">Não lembrar antes das<input type="time" id="winStart" class="field" value="07:00"></label>
+                <label class="mini">nem depois das<input type="time" id="winEnd" class="field" value="23:00"></label>
+              </div>
+              <p class="hint" id="autoPreview"></p>
+              <div class="switch-row">
+                <span id="offerLbl">Depois de salvar, oferecer alarme no celular para o próximo horário</span>
+                <button type="button" class="switch" id="remOffer" role="switch" aria-checked="true" aria-labelledby="offerLbl"><span></span></button>
+              </div>
+            </div>
+          </section>
 
-          <div id="modeInterval" class="stack">
-            <label class="sublabel" for="every">Intervalo depois da última sondagem</label>
-            <div class="row">
-              <button type="button" class="round sm" id="everyMinus" aria-label="Diminuir intervalo">−</button>
-              <output id="everyOut" class="big-out" for="every">4 h</output>
-              <button type="button" class="round sm" id="everyPlus" aria-label="Aumentar intervalo">+</button>
-              <input type="hidden" id="every" value="4">
+          <section class="rem-sec" aria-labelledby="fixedLbl">
+            <div class="switch-row">
+              <span id="fixedLbl"><strong>Horários fixos</strong> <span class="opt">(opcional)</span><br><small class="hint">Lembra sempre nos mesmos horários, todo dia.</small></span>
+              <button type="button" class="switch" id="remFixed" role="switch" aria-checked="false" aria-labelledby="fixedLbl"><span></span></button>
             </div>
-            <div class="row two">
-              <label class="mini">Começa às<input type="time" id="winStart" class="field" value="07:00"></label>
-              <label class="mini">Termina às<input type="time" id="winEnd" class="field" value="23:00"></label>
+            <div id="fixedBody" class="stack" hidden>
+              <ul class="times" id="timesList"></ul>
+              <div class="row">
+                <input type="time" id="newTime" class="field grow" value="12:00" aria-label="Novo horário">
+                <button type="button" class="btn ghost" id="addTime">Adicionar</button>
+              </div>
+              <button type="button" class="btn ghost wide" id="icsBtn">Criar alarmes diários na agenda do celular</button>
             </div>
-            <p class="hint">Fora desse horário o app não lembra (útil para a noite).</p>
-          </div>
-
-          <div id="modeTimes" class="stack" hidden>
-            <p class="sublabel">Horários do dia</p>
-            <ul class="times" id="timesList"></ul>
-            <div class="row">
-              <input type="time" id="newTime" class="field grow" value="12:00" aria-label="Novo horário">
-              <button type="button" class="btn ghost" id="addTime">Adicionar</button>
-            </div>
-          </div>
+          </section>
 
           <div class="stack">
             <p class="sublabel">Avisos</p>
             <button type="button" class="btn ghost wide" id="notifBtn">Permitir notificações</button>
             <button type="button" class="btn ghost wide" id="testAlarm">Testar alarme</button>
-            <button type="button" class="btn primary wide" id="icsBtn">Criar alarmes na agenda do celular</button>
             <p class="hint">
-              Dentro do app o alarme toca com som e aviso na tela. Com o app fechado, o celular pode não deixar o app tocar.
-              Para garantir, use <strong>Criar alarmes na agenda</strong>: gera eventos diários com alarme que a agenda toca sempre.
+              Com o app aberto, o lembrete toca com som, vibração e aviso na tela. Com o app fechado, o celular não deixa um app de navegador tocar sozinho;
+              por isso, no modo automático, o app oferece criar um alarme no celular logo depois de você salvar.
             </p>
           </div>
         </div>
@@ -307,6 +315,7 @@
       <p id="savedText"></p>
       <div class="alarm-actions">
         <button type="button" class="btn primary big" id="savedOk">OK</button>
+        <button type="button" class="btn ghost" id="savedAlarm" hidden>Criar alarme no celular</button>
         <button type="button" class="btn ghost" id="savedUndo">Desfazer</button>
       </div>
     </div>
@@ -325,6 +334,6 @@
     </div>
   </div>
 
-  <script src="js/app.js?v=16"></script>
+  <script src="js/app.js?v=17"></script>
 </body>
 </html>

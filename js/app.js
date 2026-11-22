@@ -14,7 +14,7 @@
     targetAvg: 400,
     bigText: false,
     lastMl: 300,
-    rem: { on: false, mode: "interval", every: 4, start: "07:00", end: "23:00", times: ["07:00", "11:00", "15:00", "19:00", "23:00"] }
+    rem: { on: false, auto: true, fixed: false, offer: true, every: 4, start: "07:00", end: "23:00", times: ["07:00", "11:00", "15:00", "19:00", "23:00"] }
   };
 
   function load(key, fallback) {
@@ -30,6 +30,12 @@
 
   var entries = load(KEY_ENTRIES, []);
   var settings = merge(DEFAULT_SETTINGS, load(KEY_SETTINGS, {}));
+  // versões antigas tinham um único "modo"; converte para os dois interruptores
+  if (settings.rem.mode) {
+    settings.rem.auto = settings.rem.mode !== "times";
+    settings.rem.fixed = settings.rem.mode === "times";
+    delete settings.rem.mode;
+  }
   var alarmState = load(KEY_ALARM, { acked: 0, snoozeUntil: 0 });
   var missed = load(KEY_MISSED, {});
   if (!missed || typeof missed !== "object" || Array.isArray(missed)) missed = {};
@@ -268,7 +274,7 @@
   });
 
   // Pop-up de confirmação: mostra o que foi salvo e, ao fechar, volta a tela ao início atualizada.
-  var savedUndoFn = null, savedTimer = null;
+  var savedUndoFn = null, savedTimer = null, savedAlarmAt = null;
   function showSaved(data, edited, undo) {
     $("#savedTitle").textContent = edited ? "Registro atualizado!" : "Registro salvo!";
     $("#savedMl").textContent = data.ml + " ml";
@@ -278,11 +284,16 @@
     $("#savedText").textContent = "Às " + when + "." + (td.length ? " Hoje: " + td.length + (td.length === 1 ? " sondagem" : " sondagens") + ", média " + fmtNum(total / td.length) + " ml." : "");
     savedUndoFn = undo;
     $("#savedUndo").hidden = !undo;
+    var r = settings.rem, al = $("#savedAlarm");
+    savedAlarmAt = (!edited && r.on && r.auto && r.offer) ? autoDue(Date.now()) : null;
+    al.hidden = !savedAlarmAt;
+    if (savedAlarmAt) al.textContent = "⏰ Criar alarme no celular para " + hhmm(savedAlarmAt) +
+      (dayStart(savedAlarmAt) === dayStart(Date.now()) ? "" : " (amanhã)");
     $("#saved").hidden = false;
     $("#savedOk").focus();
     try { if (navigator.vibrate) navigator.vibrate(60); } catch (e) {}
     clearTimeout(savedTimer);
-    savedTimer = setTimeout(closeSaved, 4000);
+    savedTimer = setTimeout(closeSaved, savedAlarmAt ? 12000 : 4000);
   }
   function closeSaved() {
     clearTimeout(savedTimer);
@@ -293,6 +304,12 @@
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
   $("#savedOk").addEventListener("click", closeSaved);
+  $("#savedAlarm").addEventListener("click", function () {
+    var t = savedAlarmAt;
+    closeSaved();
+    if (t) deliverFile("alarme-sondagem-" + hhmm(t).replace(":", "h") + ".ics", "text/calendar", buildOneIcs(t),
+      "Alarme para " + hhmm(t) + ". Abra o arquivo na sua agenda para confirmar.");
+  });
   $("#savedUndo").addEventListener("click", function () { var f = savedUndoFn; closeSaved(); if (f) f(); });
   $("#saved").addEventListener("click", function (ev) { if (ev.target === this) closeSaved(); });
   document.addEventListener("keydown", function (ev) {
@@ -830,8 +847,8 @@
   }
 
   // ------------------------------------------------------------------ lembretes
-  // Retorna o horário da próxima sondagem prevista (pode estar no passado = atrasada).
-  function nextDue(now) {
+  // Lembrete automático: X horas depois da última sondagem, respeitando a faixa de horário.
+  function autoDue(now) {
     var r = settings.rem;
     var last = lastEntry();
     var s = timeToMin(r.start), e = timeToMin(r.end);
@@ -843,17 +860,17 @@
       var c = atMinutes(t, s);
       return c > t ? c : atMinutes(t + DAY, s);
     };
-    if (r.mode === "interval") {
-      var every = (+r.every || 4) * HOUR;
-      var base = last ? last.t + every : null;
-      if (base === null) return inWindow(now) ? null : nextWindowStart(now);
-      // depois de muito tempo sem registro, não acumula atraso infinito
-      if (now - base > 12 * HOUR) base = inWindow(now) ? now : nextWindowStart(now);
-      if (!inWindow(base)) base = nextWindowStart(base);
-      return base;
-    }
-    // horários fixos: horário mais recente ainda não cumprido, senão o próximo
-    var times = (r.times || []).map(timeToMin).sort(function (a, b) { return a - b; });
+    var every = (+r.every || 4) * HOUR;
+    var base = last ? last.t + every : null;
+    if (base === null) return inWindow(now) ? null : nextWindowStart(now);
+    // depois de muito tempo sem registro, não acumula atraso infinito
+    if (now - base > 12 * HOUR) base = inWindow(now) ? now : nextWindowStart(now);
+    if (!inWindow(base)) base = nextWindowStart(base);
+    return base;
+  }
+  // Horários fixos: o horário mais recente ainda não cumprido, senão o próximo.
+  function fixedDue(now) {
+    var times = (settings.rem.times || []).map(timeToMin).sort(function (a, b) { return a - b; });
     if (!times.length) return null;
     var slots = [];
     [-1, 0, 1].forEach(function (d) { times.forEach(function (m) { slots.push(atMinutes(now + d * DAY, m)); }); });
@@ -867,15 +884,26 @@
     for (var i = 0; i < slots.length; i++) if (slots[i] > now) return slots[i];
     return null;
   }
+  // Próxima sondagem prevista, juntando os dois tipos (pode estar no passado = atrasada).
+  function nextDue(now) {
+    var r = settings.rem, c = [];
+    if (r.auto) { var a = autoDue(now); if (a) c.push(a); }
+    if (r.fixed) { var f = fixedDue(now); if (f) c.push(f); }
+    return c.length ? Math.min.apply(null, c) : null;
+  }
 
   function renderReminders() {
     var r = settings.rem;
     setSwitch($("#remOn"), r.on);
     $("#remBody").classList.toggle("off", !r.on);
-    setSeg($("#remMode"), r.mode);
-    $("#modeInterval").hidden = r.mode !== "interval";
-    $("#modeTimes").hidden = r.mode !== "times";
-    $("#everyOut").textContent = String(r.every).replace(".", ",") + " h";
+    setSwitch($("#remAuto"), r.auto); $("#autoBody").hidden = !r.auto;
+    setSwitch($("#remFixed"), r.fixed); $("#fixedBody").hidden = !r.fixed;
+    setSwitch($("#remOffer"), r.offer);
+    $("#everyOut").textContent = fmtEvery(r.every);
+    var last = lastEntry();
+    $("#autoPreview").textContent = last
+      ? "Última às " + hhmm(last.t) + " → próximo lembrete automático às " + hhmm(autoDue(Date.now())) + "."
+      : "Assim que você registrar uma sondagem, o próximo lembrete é marcado.";
     $("#winStart").value = r.start; $("#winEnd").value = r.end;
     var ul = $("#timesList"); ul.innerHTML = "";
     r.times.slice().sort().forEach(function (t) {
@@ -894,17 +922,23 @@
     settings.rem.on = !settings.rem.on; persistSettings(); renderReminders(); renderTop();
     if (settings.rem.on) { unlockAudio(); toast("Lembretes ligados."); }
   });
-  $all("#remMode button").forEach(function (b) {
-    b.addEventListener("click", function () { settings.rem.mode = b.dataset.v; persistSettings(); renderReminders(); renderTop(); });
-  });
+  function fmtEvery(v) { var h = Math.floor(v), m = Math.round((v - h) * 60); return h + " h" + (m ? " " + pad(m) : ""); }
+  function toggleRem(key, msgOn) {
+    settings.rem[key] = !settings.rem[key];
+    persistSettings(); renderReminders(); renderTop();
+    if (settings.rem[key] && msgOn) toast(msgOn);
+  }
+  $("#remAuto").addEventListener("click", function () { toggleRem("auto", "Lembrete automático ligado."); });
+  $("#remFixed").addEventListener("click", function () { toggleRem("fixed", "Horários fixos ligados."); });
+  $("#remOffer").addEventListener("click", function () { settings.rem.offer = !settings.rem.offer; persistSettings(); renderReminders(); });
   function stepEvery(d) {
-    var v = Math.max(1, Math.min(12, (+settings.rem.every || 4) + d));
+    var v = Math.max(0.5, Math.min(12, (+settings.rem.every || 4) + d));
     settings.rem.every = v; persistSettings(); renderReminders(); renderTop();
   }
-  $("#everyMinus").addEventListener("click", function () { stepEvery(-0.5); });
-  $("#everyPlus").addEventListener("click", function () { stepEvery(0.5); });
-  $("#winStart").addEventListener("change", function () { settings.rem.start = this.value || "07:00"; persistSettings(); renderTop(); });
-  $("#winEnd").addEventListener("change", function () { settings.rem.end = this.value || "23:00"; persistSettings(); renderTop(); });
+  $("#everyMinus").addEventListener("click", function () { stepEvery(-0.25); });
+  $("#everyPlus").addEventListener("click", function () { stepEvery(0.25); });
+  $("#winStart").addEventListener("change", function () { settings.rem.start = this.value || "07:00"; persistSettings(); renderReminders(); renderTop(); });
+  $("#winEnd").addEventListener("change", function () { settings.rem.end = this.value || "23:00"; persistSettings(); renderReminders(); renderTop(); });
   $("#addTime").addEventListener("click", function () {
     var v = $("#newTime").value;
     if (!v) return;
@@ -1017,13 +1051,17 @@
   document.addEventListener("visibilitychange", function () { if (!document.hidden) tick(); });
 
   // ------------------------------------------------------------------ agenda (.ics)
-  function icsTimes() {
-    var r = settings.rem;
-    if (r.mode === "times") return r.times.slice().sort();
-    var s = timeToMin(r.start), e = timeToMin(r.end), step = Math.round((+r.every || 4) * 60), out = [];
-    if (e < s) e += 24 * 60;
-    for (var m = s; m <= e; m += step) out.push(pad(Math.floor(m / 60) % 24) + ":" + pad(m % 60));
-    return out;
+  function icsTimes() { return settings.rem.times.slice().sort(); }
+  function icsStamp(d) { return d.getUTCFullYear() + pad(d.getUTCMonth() + 1) + pad(d.getUTCDate()) + "T" + pad(d.getUTCHours()) + pad(d.getUTCMinutes()) + "00Z"; }
+  // Um alarme só, para um horário específico (o próximo do modo automático).
+  function buildOneIcs(t) {
+    var start = new Date(t), end = new Date(t + 10 * MIN);
+    return ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//MaxMix//PT-BR", "CALSCALE:GREGORIAN", "METHOD:PUBLISH",
+      "BEGIN:VEVENT", "UID:sondagem-" + t + "@maxmix", "DTSTAMP:" + icsStamp(new Date()),
+      "DTSTART:" + icsStamp(start), "DTEND:" + icsStamp(end),
+      "SUMMARY:Sondagem", "DESCRIPTION:Hora da sondagem. Depois registre o volume no MaxMix.", "TRANSP:TRANSPARENT",
+      "BEGIN:VALARM", "ACTION:DISPLAY", "DESCRIPTION:Hora da sondagem", "TRIGGER:PT0M", "END:VALARM",
+      "END:VEVENT", "END:VCALENDAR"].join("\r\n") + "\r\n";
   }
   function buildIcs(times) {
     var now = new Date();

@@ -13,9 +13,10 @@ Funciona no navegador e pode ser **instalado na tela inicial** do celular (PWA).
 - **Meta de média**: destaque da média por sondagem com meta (padrão: abaixo de 400 ml, ajustável). Verde quando está dentro, laranja quando passa, com gráfico da média dia a dia.
 - **Gráficos** (7, 14 ou 30 dias): média por sondagem, sondagens por dia, intervalo médio, total por dia, maior volume, registros com perda. Mostra o volume por dia, o volume de cada sondagem (com linha do máximo indicado pelo médico, se você preencher) e os horários.
 - **Lembretes** (opcionais):
-  - *A cada X horas* depois da última sondagem, dentro de uma faixa de horário (ex.: 7h às 23h), ou *horários fixos*.
-  - Com o app aberto: aviso na tela, som e vibração. Com notificação permitida, avisa também quando o app está em segundo plano.
-  - **Criar alarmes na agenda do celular**: gera um arquivo `.ics` com eventos diários e alarme. É o jeito mais confiável de ser lembrado com o app fechado.
+  - **Automático (padrão)**: o próximo lembrete é marcado X horas depois da última sondagem registrada, respeitando uma faixa de horário (ex.: não lembrar entre 23h e 7h).
+  - **Horários fixos (opcional)**: lembra sempre nos mesmos horários; pode criar alarmes diários na agenda (.ics).
+  - Pode usar os dois juntos; vale o que vier primeiro.
+  - Com o app aberto: aviso na tela, som e vibração. Depois de salvar, o app oferece criar um alarme no celular (.ics) para o próximo horário automático, que toca mesmo com o app fechado.
 - **Seus dados**: exportar planilha CSV (abre no Excel/Google Planilhas, boa para levar ao médico), fazer backup e restaurar.
 
 ## Privacidade
