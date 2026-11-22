@@ -423,3 +423,37 @@ body.modal-open { overflow: hidden; }
 .rem-sec { display: flex; flex-direction: column; gap: 12px; padding: 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--bg); }
 .rem-sec .switch-row small { font-weight: 400; font-size: 0.82em; }
 .row.two { align-items: flex-end; }
+
+/* mapas de calor */
+.h-cell { stroke: none; }
+.h-empty { fill: var(--surface-2); }
+.h-seq { fill: var(--accent); }
+.h-cool { fill: var(--accent); }
+.h-hot { fill: var(--warn); }
+.c-axis.strong { font-weight: 700; fill: var(--ink); }
+.heat-note { margin: 6px 4px 4px; }
+.heat-note.warn { color: var(--ink); font-weight: 400; background: var(--warn-soft); border-radius: 10px; padding: 8px 10px; }
+
+/* gráficos clicáveis */
+figure.chart.zoomable { cursor: zoom-in; position: relative; }
+figure.chart.zoomable:active { transform: scale(.995); }
+.zoom-hint { display: inline-flex !important; align-items: center; gap: 4px; align-self: flex-start; margin-top: 4px;
+  font-size: 0.75em !important; font-weight: 700; color: var(--accent) !important; }
+.zoom-hint svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* visualizador em tela cheia */
+.viewer {
+  position: fixed; inset: 0; z-index: 45; background: var(--surface);
+  display: flex; flex-direction: column; gap: 6px;
+  padding: max(10px, env(safe-area-inset-top, 0px)) max(14px, env(safe-area-inset-right, 0px)) max(10px, env(safe-area-inset-bottom, 0px)) max(14px, env(safe-area-inset-left, 0px));
+}
+.viewer.rotated {
+  inset: auto; top: 0; left: 0; width: 100vh; height: 100vw;
+  transform-origin: top left; transform: rotate(90deg) translateY(-100%);
+}
+.viewer-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.viewer-head h2 { font-family: var(--f-display); font-size: 1.1em; margin: 0; min-width: 0; }
+.viewer-body { flex: 1 1 auto; min-height: 0; display: flex; align-items: center; justify-content: center; }
+.viewer-body svg { width: 100%; height: 100%; max-height: 100%; font-family: var(--f-body); }
+.viewer-tip { margin: 0; min-height: 2.6em; padding: 8px 12px; border-radius: 10px; background: var(--surface-2); font-weight: 700; font-size: 0.95em; font-variant-numeric: tabular-nums; }
+.viewer .sel { stroke: var(--ink); stroke-width: 2.5px; paint-order: stroke; }

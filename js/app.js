@@ -653,6 +653,10 @@
     $("#chartDaily").innerHTML = chartDaily(days);
     $("#chartEach").innerHTML = chartEach(list, from, now);
     $("#chartHours").innerHTML = chartHours(list);
+    // Mapas de calor: só fazem sentido com vários dias
+    $("#heatFreqBox").hidden = period === 1;
+    $("#heatVolBox").hidden = period === 1;
+    if (period > 1) renderHeat(list, days);
     $("#limitCaption").textContent = settings.maxMl
       ? "linha tracejada = seu máximo (" + settings.maxMl + " ml)"
       : "defina um máximo em Lembretes › Ajustes para ver a linha de referência";
@@ -730,6 +734,99 @@
       out += '<text class="c-target-t" x="' + (W - R + 6) + '" y="' + (ty + 11) + '">' + target + "</text>";
     }
     return out + "</svg>";
+  }
+
+  // ---------------- mapas de calor (dia × hora)
+  function heatGrid(list, days) {
+    var rows = days.map(function (d) { return { t: d.t, cells: [] }; });
+    rows.forEach(function (r) { for (var h = 0; h < 24; h++) r.cells.push({ n: 0, ml: 0 }); });
+    var idx = {}; days.forEach(function (d, i) { idx[dayKey(d.t)] = i; });
+    var all = []; for (var h = 0; h < 24; h++) all.push({ n: 0, ml: 0 });
+    list.forEach(function (e) {
+      var i = idx[dayKey(e.t)], h = new Date(e.t).getHours();
+      if (i === undefined) return;
+      rows[i].cells[h].n++; rows[i].cells[h].ml += e.ml;
+      all[h].n++; all[h].ml += e.ml;
+    });
+    return { rows: rows, all: all };
+  }
+  function heatSvg(g, kind, target) {
+    var nR = g.rows.length;
+    var L = 46, R = 6, T = 18, W = 520;
+    var cw = (W - L - R) / 24, ch = nR > 14 ? 13 : 18, gapSum = 10, legendH = 34;
+    var H = T + nR * ch + gapSum + ch + 18 + legendH;
+    var maxN = 1; g.rows.forEach(function (r) { r.cells.forEach(function (c) { if (c.n > maxN) maxN = c.n; }); });
+    var maxAll = Math.max(1, Math.max.apply(null, g.all.map(function (c) { return c.n; })));
+    function fillFor(c, isAll) {
+      if (!c.n) return null;
+      if (kind === "freq") {
+        var m = isAll ? maxAll : maxN;
+        return { cls: "h-seq", op: (0.18 + 0.82 * c.n / m).toFixed(2) };
+      }
+      var avg = c.ml / c.n;
+      if (!target) return { cls: "h-seq", op: "0.6" };
+      var d = Math.min(1, Math.abs(avg - target) / (target * 0.4)); // 40% da meta = cor cheia
+      return { cls: avg >= target ? "h-hot" : "h-cool", op: (0.12 + 0.88 * d).toFixed(2) };
+    }
+    function tip(c, label, h) {
+      var hh = pad(h) + "h–" + pad((h + 1) % 24) + "h";
+      if (!c.n) return label + ", " + hh + ": nenhuma sondagem";
+      return label + ", " + hh + ": " + plural(c.n, "sondagem", "sondagens") + " · média " + fmtNum(c.ml / c.n) + " ml";
+    }
+    var out = '<svg viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="' +
+      (kind === "freq" ? "Mapa de calor da quantidade de sondagens por dia e hora" : "Mapa de calor do volume médio por dia e hora") + '">';
+    for (var h = 0; h < 24; h += 3) out += '<text class="c-axis" x="' + (L + h * cw + cw / 2) + '" y="' + (T - 6) + '" text-anchor="middle">' + pad(h) + "h</text>";
+    function row(cells, y, label, isAll) {
+      var s = '<text class="c-axis' + (isAll ? " strong" : "") + '" x="' + (L - 6) + '" y="' + (y + ch / 2 + 4) + '" text-anchor="end">' + label + "</text>";
+      cells.forEach(function (c, h) {
+        var f = fillFor(c, isAll), x = L + h * cw + 1, w = cw - 2, hh = ch - 2;
+        s += '<rect class="h-cell ' + (f ? f.cls : "h-empty") + '" x="' + x.toFixed(1) + '" y="' + (y + 1) + '" width="' + w.toFixed(1) + '" height="' + hh + '" rx="2"' +
+          (f ? ' fill-opacity="' + f.op + '"' : "") + "><title>" + esc(tip(c, isAll ? "Período todo" : label, h)) + "</title></rect>";
+      });
+      return s;
+    }
+    g.rows.forEach(function (r, i) {
+      var dt = new Date(r.t);
+      out += row(r.cells, T + i * ch, pad(dt.getDate()) + "/" + pad(dt.getMonth() + 1), false);
+    });
+    var yAll = T + nR * ch + gapSum;
+    out += row(g.all, yAll, kind === "freq" ? "Total" : "Média", true);
+    // legenda
+    var ly = yAll + ch + 22;
+    if (kind === "freq") {
+      out += '<text class="c-axis" x="' + L + '" y="' + (ly + 10) + '">menos</text>';
+      [0.18, 0.4, 0.6, 0.8, 1].forEach(function (o, i) { out += '<rect class="h-seq" x="' + (L + 40 + i * 22) + '" y="' + ly + '" width="18" height="13" rx="2" fill-opacity="' + o + '"/>'; });
+      out += '<text class="c-axis" x="' + (L + 40 + 5 * 22 + 4) + '" y="' + (ly + 10) + '">mais sondagens</text>';
+    } else if (target) {
+      var x0 = L;
+      out += '<text class="c-axis" x="' + x0 + '" y="' + (ly + 10) + '">abaixo</text>';
+      [1, 0.6, 0.2].forEach(function (o, i) { out += '<rect class="h-cool" x="' + (x0 + 44 + i * 22) + '" y="' + ly + '" width="18" height="13" rx="2" fill-opacity="' + o + '"/>'; });
+      out += '<text class="c-axis" x="' + (x0 + 44 + 3 * 22 + 4) + '" y="' + (ly + 10) + '">meta ' + target + "</text>";
+      [0.2, 0.6, 1].forEach(function (o, i) { out += '<rect class="h-hot" x="' + (x0 + 180 + i * 22) + '" y="' + ly + '" width="18" height="13" rx="2" fill-opacity="' + o + '"/>'; });
+      out += '<text class="c-axis" x="' + (x0 + 180 + 3 * 22 + 4) + '" y="' + (ly + 10) + '">acima</text>';
+    }
+    return out + "</svg>";
+  }
+  function renderHeat(list, days) {
+    var g = heatGrid(list, days), target = settings.targetAvg;
+    $("#heatFreq").innerHTML = heatSvg(g, "freq", target);
+    $("#heatVol").innerHTML = heatSvg(g, "vol", target);
+    $("#heatVolCap").textContent = target
+      ? "azul = abaixo da meta de " + target + " ml · laranja = acima · quanto mais forte, mais longe da meta"
+      : "defina uma meta em Lembretes › Ajustes para colorir por meta";
+    // leituras automáticas (só com dados de verdade; horas com pelo menos 2 sondagens)
+    var hrs = g.all.map(function (c, h) { return { h: h, n: c.n, avg: c.n ? c.ml / c.n : 0 }; }).filter(function (x) { return x.n >= 2; });
+    var top = hrs.slice().sort(function (a, b) { return b.n - a.n; }).slice(0, 3).sort(function (a, b) { return a.h - b.h; });
+    $("#heatFreqNote").textContent = top.length
+      ? "Horários em que você mais faz: " + top.map(function (x) { return pad(x.h) + "h (" + x.n + "×)"; }).join(", ") + "."
+      : "Ainda há poucos registros para ver um padrão.";
+    var hot = target ? hrs.filter(function (x) { return x.avg >= target; }).sort(function (a, b) { return b.avg - a.avg; }).slice(0, 4) : [];
+    var vn = $("#heatVolNote");
+    vn.classList.toggle("warn", hot.length > 0);
+    vn.textContent = !target ? "" : hot.length
+      ? "Mais atenção: nestes horários o volume médio passa da meta, então vale encurtar o intervalo antes deles: " +
+        hot.map(function (x) { return pad(x.h) + "h (" + fmtNum(x.avg) + " ml)"; }).join(", ") + "."
+      : (hrs.length ? "Nenhum horário com média acima da meta no período." : "Ainda há poucos registros para ver um padrão.");
   }
 
   function addFlag(box, text) {
@@ -1163,6 +1260,95 @@
     reader.readAsText(f);
   });
 
+  // ------------------------------------------------------------------ gráfico em tela cheia
+  var viewerFig = null;
+  function setupChartFigures() {
+    $all("figure.chart").forEach(function (fig) {
+      if (fig.dataset.zoom) return;
+      fig.dataset.zoom = "1";
+      fig.classList.add("zoomable");
+      fig.setAttribute("tabindex", "0");
+      fig.setAttribute("role", "button");
+      var cap = fig.querySelector("figcaption strong");
+      fig.setAttribute("aria-label", "Ampliar gráfico: " + (cap ? cap.textContent : ""));
+      var hint = document.createElement("span"); hint.className = "zoom-hint"; hint.setAttribute("aria-hidden", "true");
+      hint.innerHTML = '<svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>Ampliar';
+      fig.querySelector("figcaption").append(hint);
+      fig.addEventListener("click", function () { openViewer(fig); });
+      fig.addEventListener("keydown", function (ev) { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); openViewer(fig); } });
+    });
+  }
+  function openViewer(fig) {
+    var svg = fig.querySelector(".chart-box svg");
+    if (!svg) return;
+    viewerFig = fig;
+    var cap = fig.querySelector("figcaption strong");
+    $("#viewerTitle").textContent = cap ? cap.textContent : "Gráfico";
+    var body = $("#viewerBody"); body.innerHTML = "";
+    var clone = svg.cloneNode(true);
+    clone.setAttribute("preserveAspectRatio", "xMidYMid meet");
+    clone.removeAttribute("width"); clone.removeAttribute("height");
+    body.append(clone);
+    $("#viewerTip").textContent = "Toque num ponto, barra ou quadradinho para ver os detalhes.";
+    var v = $("#viewer");
+    v.hidden = false;
+    document.body.classList.add("modal-open");
+    $("#viewerClose").focus({ preventScroll: true });
+    // tenta tela cheia + paisagem; se o celular não deixar, gira a tela por CSS
+    var done = function () { fitViewer(); };
+    try {
+      // tela cheia na página inteira (o navegador não deixa girar o próprio elemento em tela cheia)
+      var de = document.documentElement;
+      var req = de.requestFullscreen || de.webkitRequestFullscreen;
+      var p = req ? req.call(de) : null;
+      if (p && p.then) {
+        p.then(function () {
+          if (screen.orientation && screen.orientation.lock) return screen.orientation.lock("landscape").catch(function () {});
+        }).then(done, done);
+      } else done();
+    } catch (e) { done(); }
+  }
+  function fitViewer() {
+    var v = $("#viewer");
+    if (v.hidden) return;
+    var portrait = window.innerHeight > window.innerWidth;
+    v.classList.toggle("rotated", portrait);
+  }
+  function closeViewer() {
+    var v = $("#viewer");
+    if (v.hidden) return;
+    v.hidden = true; v.classList.remove("rotated");
+    document.body.classList.remove("modal-open");
+    try { if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock(); } catch (e) {}
+    try { if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(function () {}); } catch (e) {}
+    if (viewerFig) viewerFig.focus({ preventScroll: true });
+    viewerFig = null;
+  }
+  $("#viewerClose").addEventListener("click", function (ev) { ev.stopPropagation(); closeViewer(); });
+  window.addEventListener("resize", fitViewer);
+  document.addEventListener("fullscreenchange", function () { if (!document.fullscreenElement) fitViewer(); });
+  document.addEventListener("keydown", function (ev) { if (ev.key === "Escape") closeViewer(); });
+  // toque: pega a marca (barra, ponto, quadradinho) mais perto do dedo
+  $("#viewerBody").addEventListener("click", function (ev) {
+    var svg = this.querySelector("svg"); if (!svg) return;
+    var best = null, bestD = 1e9;
+    Array.prototype.forEach.call(svg.querySelectorAll("rect, circle"), function (el) {
+      var t = el.querySelector("title"); if (!t) return;
+      var r = el.getBoundingClientRect();
+      var dx = Math.max(r.left - ev.clientX, 0, ev.clientX - r.right);
+      var dy = Math.max(r.top - ev.clientY, 0, ev.clientY - r.bottom);
+      var d = Math.sqrt(dx * dx + dy * dy);
+      if (d < bestD) { bestD = d; best = el; }
+    });
+    Array.prototype.forEach.call(svg.querySelectorAll(".sel"), function (el) { el.classList.remove("sel"); });
+    if (best && bestD <= 28) {
+      best.classList.add("sel");
+      $("#viewerTip").textContent = best.querySelector("title").textContent;
+    } else {
+      $("#viewerTip").textContent = "Toque num ponto, barra ou quadradinho para ver os detalhes.";
+    }
+  });
+
   // ------------------------------------------------------------------ boot
   function refreshAll() {
     renderTop();
@@ -1173,6 +1359,7 @@
 
   sortEntries();
   applyBig();
+  setupChartFigures();
   resetForm();
   var start = (location.hash || "").slice(1);
   show(["registrar", "historico", "graficos", "lembretes"].indexOf(start) >= 0 ? start : "registrar");
