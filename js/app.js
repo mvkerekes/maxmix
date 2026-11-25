@@ -1357,6 +1357,12 @@
   resetForm();
   var start = (location.hash || "").slice(1);
   show(["registrar", "historico", "graficos", "lembretes"].indexOf(start) >= 0 ? start : "registrar");
+  // Atalho "Nova sondagem" (ícone + na tela do celular): abre direto o pop-up de registro
+  if (/[?&]nova=1\b/.test(location.search)) {
+    try { history.replaceState(null, "", location.pathname + "#registrar"); } catch (e) {}
+    show("registrar");
+    openNew();
+  }
   tick();
 
   if ("serviceWorker" in navigator && location.protocol !== "file:") {
